@@ -1,0 +1,14 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Graduation cap base -->
+  <path d="M100 40L20 80L100 120L180 80L100 40Z" fill="#4338CA" />
+  <!-- Cap tassel -->
+  <path d="M60 90V130C60 140 80 150 100 150C120 150 140 140 140 130V90" stroke="#4F46E5" stroke-width="5" stroke-linecap="round" />
+  <!-- Cap top -->
+  <circle cx="100" cy="150" r="10" fill="#4F46E5" />
+  <!-- Tassel string -->
+  <path d="M100 40V25" stroke="#4F46E5" stroke-width="3" stroke-linecap="round" />
+  <circle cx="100" cy="20" r="6" fill="#4F46E5" />
+  <!-- Decorative elements -->
+  <path d="M40 80L50 85M160 80L150 85" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" />
+  <path d="M100 120V140" stroke="#4F46E5" stroke-width="3" stroke-linecap="round" />
+</svg> 

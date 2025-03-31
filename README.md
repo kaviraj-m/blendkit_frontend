@@ -1,4 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Student Portal Frontend
+
+This is the frontend application for the Student Portal system, built with Next.js and TypeScript.
+
+## Environment Configuration
+
+The application uses environment variables for configuration. Create a `.env.local` file in the root directory with the following variables:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+```
+
+You can adjust the API URL based on your environment:
+- Development: `http://localhost:3001/api`
+- Production: Set this to your production API URL
+
+## Development
+
+To start the development server:
+
+```bash
+npm install
+npm run dev
+```
+
+The application will be available at http://localhost:3000.
+
+## Features
+
+- User authentication (login/logout)
+- Dashboard with student information
+- Front office management
+- Ticket management system
+- Attendance management
+- Gate pass management
+- Biometric management
+
+## Build
+
+To build the application for production:
+
+```bash
+npm run build
+```
+
+Then you can start the production server:
+
+```bash
+npm start
+```
 
 ## Getting Started
 
