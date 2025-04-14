@@ -25,6 +25,14 @@ export const rolePermissions = {
     'view_attendance',
     'manage_attendance',
   ],
+  security: [
+    'view_gate_passes',
+    'verify_gate_passes',
+    'view_attendance',
+    'view_gym_schedule',
+    'view_gym_posts',
+    'view_equipment',
+  ],
   executive_director: [
     'view_gym_schedule',
     'manage_gym_schedule',
@@ -111,6 +119,13 @@ export const roleRoutes = {
     { path: '/dashboard/gym-schedule', label: 'Gym Schedule' },
     { path: '/dashboard/gym-posts', label: 'Fitness Posts' },
     { path: '/dashboard/equipment', label: 'Equipment' },
+    { path: '/dashboard/profile', label: 'Profile' },
+  ],
+  security: [
+    { path: '/dashboard', label: 'Dashboard' },
+    { path: '/dashboard/security', label: 'Security Dashboard' },
+    { path: '/dashboard/gate-pass', label: 'Gate Pass' },
+    { path: '/dashboard/gym-schedule', label: 'Gym Schedule' },
     { path: '/dashboard/profile', label: 'Profile' },
   ],
   gym_staff: [

@@ -4,6 +4,7 @@ import { ReactNode, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Sidebar from '@/components/Sidebar';
 
 // Icon types
 interface IconProps {
@@ -323,205 +324,45 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar for desktop */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        <div className="flex-1 flex flex-col min-h-0 bg-purple-700">
-          <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4">
-              <span className="text-white text-xl font-bold">BlendKit</span>
-            </div>
-            <nav className="mt-5 flex-1 px-2 space-y-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`${isActive ? 'bg-purple-800 text-white' : 'text-purple-100 hover:bg-purple-600'} group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                  >
-                    <item.icon
-                      className="mr-3 flex-shrink-0 h-6 w-6 text-purple-300"
-                      aria-hidden="true"
-                    />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-          <div className="flex-shrink-0 flex border-t border-purple-800 p-4">
-            <div className="flex-shrink-0 w-full group block">
-              <div className="flex items-center">
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-white">{user?.name}</p>
-                  <button
-                    onClick={logout}
-                    className="text-xs font-medium text-purple-200 hover:text-white"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile sidebar */}
-      <div className="md:hidden">
-        <div className="fixed inset-0 flex z-40">
-          <div
-            className={`fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity ease-in-out duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={() => setSidebarOpen(false)}
-          ></div>
-
-          <div
-            className={`relative flex-1 flex flex-col max-w-xs w-full bg-purple-700 transition ease-in-out duration-300 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-          >
-            <div className="absolute top-0 right-0 -mr-12 pt-2">
-              <button
-                className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <span className="sr-only">Close sidebar</span>
-                <svg
-                  className="h-6 w-6 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4">
-                <span className="text-white text-xl font-bold">BlendKit</span>
-              </div>
-              <nav className="mt-5 px-2 space-y-1">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`${isActive ? 'bg-purple-800 text-white' : 'text-purple-100 hover:bg-purple-600'} group flex items-center px-2 py-2 text-base font-medium rounded-md`}
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <item.icon
-                        className="mr-4 flex-shrink-0 h-6 w-6 text-purple-300"
-                        aria-hidden="true"
-                      />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-            <div className="flex-shrink-0 flex border-t border-purple-800 p-4">
-              <div className="flex-shrink-0 group block">
-                <div className="flex items-center">
-                  <div>
-                    <p className="text-base font-medium text-white">{user?.name}</p>
-                    <button
-                      onClick={logout}
-                      className="text-sm font-medium text-purple-200 hover:text-white"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      {/* Sidebar component */}
+      <Sidebar mobileMenuOpen={sidebarOpen} setMobileMenuOpen={setSidebarOpen} />
+      
       {/* Main content */}
-      <div className="md:pl-64 flex flex-col flex-1">
-        {/* Header with college name, notification icon, and user profile */}
-        <div className="sticky top-0 z-10 bg-purple-700 shadow-md">
-          <div className="flex items-center justify-between h-16 px-4 md:px-6">
-            {/* Mobile menu button */}
-            <div className="flex items-center md:hidden">
-              <button
-                type="button"
-                className="h-12 w-12 inline-flex items-center justify-center rounded-md text-purple-100 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <span className="sr-only">Open sidebar</span>
-                <svg
-                  className="h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
-            </div>
-            
-            {/* College name */}
-            <div className="flex-1 flex justify-center md:justify-start">
-              <h1 className="text-xl font-bold text-white md:ml-2">College Management System</h1>
-            </div>
-            
-            {/* Notification and profile */}
-            <div className="flex items-center space-x-4">
-              {/* Notification icon */}
-              <button className="text-purple-100 hover:text-white p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-800 focus:ring-white">
-                <span className="sr-only">View notifications</span>
-                <svg
-                  className="h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
-              </button>
-              
-              {/* Profile dropdown */}
-              <div className="relative">
-                <button className="flex items-center text-sm rounded-full text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-purple-800 focus:ring-white">
-                  <span className="sr-only">Open user menu</span>
-                  <div className="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium">
-                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                </button>
-              </div>
+      <div className="flex-1 flex flex-col md:ml-64">
+        {/* Top header/nav for mobile */}
+        <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow md:hidden">
+          <button
+            type="button"
+            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 md:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <span className="sr-only">Open sidebar</span>
+            <svg
+              className="h-6 w-6"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+          <div className="flex-1 px-4 flex justify-between">
+            <div className="flex-1 flex items-center">
+              <h1 className="text-xl font-semibold text-gray-900">College Portal</h1>
             </div>
           </div>
         </div>
         
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
-            </div>
-          </div>
+        {/* Main content area */}
+        <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
+          {children}
         </main>
       </div>
     </div>

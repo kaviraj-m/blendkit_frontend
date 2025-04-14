@@ -116,6 +116,14 @@ export default function Dashboard() {
         console.log('Student role detected, redirecting to student dashboard');
         router.push('/dashboard/student');
         return;
+      } else if (role === 'staff') {
+        console.log('Staff role detected, redirecting to staff dashboard');
+        router.push('/dashboard/staff');
+        return;
+      } else if (role === 'hod') {
+        console.log('HOD role detected, redirecting to HOD dashboard');
+        router.push('/dashboard/hod');
+        return;
       } else if (role === 'gym_staff') {
         console.log('Gym staff role detected, redirecting to gym staff dashboard');
         router.push('/dashboard/gym-staff');

@@ -21,6 +21,15 @@ function MessageIcon() {
   );
 }
 
+// Gate Pass Icon
+function GatePassIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+    </svg>
+  );
+}
+
 // Custom dumbbell icon for gym
 const DumbbellIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg 
@@ -72,7 +81,7 @@ export default function StudentDashboard() {
   }, [user, token, router]);
 
   return (
-    <div className="container mx-auto p-4">
+    <>
       <h1 className="text-3xl font-bold mb-8 text-center">{greeting}, {user?.name || 'Student'}</h1>
       
       {/* Gym Hub Section */}
@@ -146,18 +155,35 @@ export default function StudentDashboard() {
         </div>
       </div>
       
-      {/* Complaint Box Card */}
-      <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
-        <div className="flex items-center mb-4">
-          <MessageIcon />
-          <h2 className="text-xl font-semibold ml-4">Complaint Box</h2>
+      {/* Student Services Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Complaint Box Card */}
+        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center mb-4">
+            <MessageIcon />
+            <h2 className="text-xl font-semibold ml-4">Complaint Box</h2>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Submit complaints or feedback directly to the Executive Director and track their status.
+          </p>
+          <Link href="/dashboard/student/complaint" className="inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors mt-2">
+            View Complaints
+          </Link>
         </div>
-        <p className="text-gray-600 mb-4">
-          Submit complaints or feedback directly to the Executive Director and track their status.
-        </p>
-        <Link href="/dashboard/student/complaint" className="inline-block px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors mt-2">
-          View Complaints
-        </Link>
+        
+        {/* Gate Pass Card */}
+        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center mb-4">
+            <GatePassIcon />
+            <h2 className="text-xl font-semibold ml-4">Gate Pass</h2>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Request and manage gate passes for leaving campus. Track approval status and history.
+          </p>
+          <Link href="/dashboard/student/gate-pass" className="inline-block px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors mt-2">
+            Manage Gate Passes
+          </Link>
+        </div>
       </div>
       
       {/* Debug information */}
@@ -172,6 +198,6 @@ export default function StudentDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 } 

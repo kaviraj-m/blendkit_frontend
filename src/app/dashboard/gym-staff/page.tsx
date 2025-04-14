@@ -64,7 +64,7 @@ export default function GymStaffDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       {/* Welcome Banner */}
       <div className="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
         <h1 className="text-3xl font-bold mb-2">
@@ -135,6 +135,6 @@ export default function GymStaffDashboard() {
           </div>
         </Link>
       </div>
-    </div>
+    </>
   );
 } 

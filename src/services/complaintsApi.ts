@@ -8,13 +8,22 @@ export interface Complaint {
   subject: string;
   message: string;
   status: 'pending' | 'in_progress' | 'resolved' | 'rejected';
-  reply?: string;
+  response?: string;
   created_at: string;
   updated_at: string;
   student: {
     id: number;
     name: string;
     email: string;
+    rollNumber?: string;
+    department?: {
+      id: number;
+      name: string;
+    };
+    dayScholarHosteller?: {
+      id: number;
+      name: string;
+    };
   };
   director?: {
     id: number;
@@ -30,7 +39,7 @@ export interface CreateComplaintDto {
 
 export interface UpdateComplaintStatusDto {
   status: 'pending' | 'in_progress' | 'resolved' | 'rejected';
-  reply: string;
+  response: string;
 }
 
 // Create axios instance with authorization header
@@ -57,6 +66,20 @@ export const complaintsApi = {
   getAll: async (token: string): Promise<Complaint[]> => {
     const http = createAuthorizedAxios(token);
     const response = await http.get('/api/complaints');
+    return response.data;
+  },
+  
+  // Get department complaints (HOD only)
+  getDepartmentComplaints: async (token: string): Promise<Complaint[]> => {
+    const http = createAuthorizedAxios(token);
+    const response = await http.get('/api/complaints/department');
+    return response.data;
+  },
+  
+  // Get hostel complaints (Warden only)
+  getHostelComplaints: async (token: string): Promise<Complaint[]> => {
+    const http = createAuthorizedAxios(token);
+    const response = await http.get('/api/complaints/hostel');
     return response.data;
   },
   

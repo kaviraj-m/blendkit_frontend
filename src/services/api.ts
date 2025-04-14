@@ -1,5 +1,6 @@
 import { AuthResponse, LoginRequest, Equipment, GymPost, GymSchedule, Attendance, User } from '../types';
 
+// The API_URL should be correctly set in the .env file or use this fallback
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 // Helper function to handle API responses
@@ -473,12 +474,41 @@ export const userApi = {
     return handleResponse<User>(response);
   },
   getProfile: async (token: string): Promise<User> => {
-    const response = await fetch(`${API_URL}/users/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return handleResponse<User>(response);
+    // First try with the configured API_URL
+    try {
+      const response = await fetch(`${API_URL}/users/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return handleResponse<User>(response);
+    } catch (error) {
+      console.error('Error fetching user profile with primary URL:', error);
+      
+      // Try with alternative URL formats as fallback
+      try {
+        // Try removing the /api part if it exists
+        const baseUrl = API_URL.endsWith('/api') 
+          ? API_URL.slice(0, -4)
+          : API_URL;
+          
+        console.log('Attempting fallback with URL:', `${baseUrl}/api/users/profile`);
+        const alternativeResponse = await fetch(`${baseUrl}/api/users/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!alternativeResponse.ok) {
+          throw new Error(`Failed with status: ${alternativeResponse.status}`);
+        }
+        
+        return alternativeResponse.json();
+      } catch (fallbackError) {
+        console.error('All profile fetch attempts failed:', fallbackError);
+        throw new Error('Failed to fetch user profile after multiple attempts');
+      }
+    }
   },
   update: async (id: number, data: Partial<User>, token: string): Promise<User> => {
     const response = await fetch(`${API_URL}/users/${id}`, {

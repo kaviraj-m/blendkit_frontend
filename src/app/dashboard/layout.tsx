@@ -36,6 +36,31 @@ export default function DashboardLayoutWrapper({
     if (!isLoading && user && token && pathname === '/dashboard') {
       const roleName = getRoleName(user);
       
+      // Redirect student to their dashboard
+      if (roleName === 'student') {
+        router.push('/dashboard/student');
+      }
+      
+      // Redirect staff to their dashboard
+      if (roleName === 'staff') {
+        router.push('/dashboard/staff');
+      }
+      
+      // Redirect hod to their dashboard
+      if (roleName === 'hod') {
+        router.push('/dashboard/hod');
+      }
+      
+      // Redirect academic director to their dashboard
+      if (roleName === 'academic_director') {
+        router.push('/dashboard/academic-director');
+      }
+      
+      // Redirect security to their dashboard
+      if (roleName === 'security') {
+        router.push('/dashboard/security');
+      }
+      
       // Redirect gym staff to their dashboard
       if (roleName === 'gym_staff') {
         router.push('/dashboard/gym-staff');
