@@ -34,6 +34,9 @@ export default function GymNavigation() {
   const canViewSchedule = user && hasPermission(user.role, 'view_gym_schedule');
   const canViewPosts = user && hasPermission(user.role, 'view_gym_posts');
   const canViewEquipment = user && hasPermission(user.role, 'view_equipment');
+  const canViewAttendance = user && hasPermission(user.role, 'manage_gym_schedule') || 
+                            (user && typeof user.role === 'string' ? user.role === 'gym_staff' : 
+                            user?.role?.name === 'gym_staff');
   
   const isActive = (path: string) => {
     return pathname === path ? 'bg-blue-700 text-white' : 'bg-white text-blue-600 hover:bg-blue-50';
@@ -54,24 +57,30 @@ export default function GymNavigation() {
         
         <div className="flex flex-wrap gap-2">
           {canViewSchedule && (
-            <Link href="/dashboard/gym-schedule" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/gym-schedule')}`}>
+            <Link href="/dashboard/gym-schedule" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/gym-schedule')}`}>
               Schedule
             </Link>
           )}
           
           {canViewPosts && (
-            <Link href="/dashboard/gym-posts" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/gym-posts')}`}>
+            <Link href="/dashboard/gym-posts" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/gym-posts')}`}>
               Workout Posts
             </Link>
           )}
           
           {canViewEquipment && (
-            <Link href="/dashboard/equipment" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/equipment')}`}>
+            <Link href="/dashboard/equipment" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/equipment')}`}>
               Equipment
             </Link>
           )}
           
-          <Link href="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium bg-white text-blue-600 hover:bg-blue-50 transition-colors ml-auto">
+          {canViewAttendance && (
+            <Link href="/dashboard/gym-attendance" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/dashboard/gym-attendance')}`}>
+              Attendance
+            </Link>
+          )}
+          
+          <Link href="/dashboard" className="px-4 py-2 rounded-md text-sm font-medium bg-white text-blue-600 hover:bg-blue-50 transition-colors ml-auto">
             Back to Dashboard
           </Link>
         </div>

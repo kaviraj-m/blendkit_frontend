@@ -704,25 +704,6 @@ export default function SecurityDashboard() {
         <div className="p-4">{getTabContent()}</div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 font-medium">
-            <ShieldCheck className="h-5 w-5 mr-2" />
-            Scan ID Card
-          </button>
-          <button className="flex items-center justify-center bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 font-medium">
-            <UserCheck className="h-5 w-5 mr-2" />
-            View Visitor Log
-          </button>
-          <button className="flex items-center justify-center bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 font-medium">
-            <Calendar className="h-5 w-5 mr-2" />
-            Security Schedule
-          </button>
-        </div>
-      </div>
-      
       {/* Verify Gate Pass Modal */}
       {isVerifyModalOpen && selectedGatePass && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -110,8 +110,14 @@ export interface Attendance {
   check_in: string;
   check_out?: string;
   is_present: boolean;
+  notes?: string;
   created_at: string;
   updated_at: string;
+  
+  userId?: number;      // Alternative for user_id
+  checkInTime?: string; // Alternative for check_in
+  checkOutTime?: string; // Alternative for check_out
+  isPresent?: boolean;  // Alternative for is_present
 }
 
 // Gym Post types

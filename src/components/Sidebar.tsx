@@ -104,28 +104,39 @@ const executiveDirectorNavigation: SidebarItem[] = [
   { name: 'Gym Schedule', href: '/dashboard/gym-schedule', icon: CalendarIcon },
   { name: 'Workout Posts', href: '/dashboard/gym-posts', icon: DocumentIcon },
   { name: 'Equipment', href: '/dashboard/equipment', icon: GymIcon },
-  { name: 'Gym Attendance', href: '/dashboard/gym-attendance', icon: AttendanceIcon },
-  { name: 'Budget & Finance', href: '/dashboard/budget', icon: BudgetIcon },
-  { name: 'Reports', href: '/dashboard/reports', icon: ReportIcon },
-  { name: 'Staff Management', href: '/dashboard/staff', icon: StaffIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
 ];
 
 const academicDirectorNavigation: SidebarItem[] = [
   { name: 'Dashboard', href: '/dashboard/academic-director', icon: HomeIcon },
-  { name: 'Department Overview', href: '/dashboard/academic-director/departments', icon: StaffIcon },
-  { name: 'Faculty Management', href: '/dashboard/academic-director/faculty', icon: StaffIcon },
   { name: 'Gate Pass Approvals', href: '/dashboard/academic-director/gate-pass', icon: DocumentIcon },
-  { name: 'Student Complaints', href: '/dashboard/academic-director/complaints', icon: MessageIcon },
-  { name: 'Academic Reports', href: '/dashboard/academic-director/reports', icon: ReportIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
 ];
 
 const securityNavigation: SidebarItem[] = [
   { name: 'Dashboard', href: '/dashboard/security', icon: HomeIcon },
-  { name: 'Gate Pass Verification', href: '/dashboard/security', icon: DocumentIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
 ];
+
+const wardenNavigation: SidebarItem[] = [{
+  name: 'Home',
+  href: '/dashboard/warden',
+  icon: HomeIcon,
+}, {
+  name: 'Students',
+  href: '/dashboard/warden/students',
+  icon: GymIcon,
+}, {
+  name: 'Hostel Complaints',
+  href: '/dashboard/warden/complaints',
+  icon: MessageIcon,
+  color: 'text-yellow-400',
+}, {
+  name: 'Room Allocation',
+  href: '/dashboard/warden/rooms',
+  icon: HomeIcon,
+  color: 'text-blue-400',
+}];
 
 interface SidebarProps {
   mobileMenuOpen?: boolean;
@@ -136,6 +147,34 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [navItems, setNavItems] = useState<SidebarItem[]>([]);
+
+  // Helper function to determine if a nav item is active
+  const isItemActive = (itemHref: string): boolean => {
+    // For root dashboard, only match exact
+    if (itemHref.includes('/dashboard') && itemHref.split('/').length === 3 && pathname === itemHref) {
+      return true;
+    }
+    
+    // For specific pages, match the exact path
+    if (pathname === itemHref) {
+      return true;
+    }
+    
+    // For nested routes, only match if the current path starts with the item path
+    // and doesn't contain other menu items
+    if (pathname.startsWith(itemHref) && itemHref !== '/dashboard') {
+      // Check if any other menu item is a better match
+      const betterMatch = navItems.some(item => 
+        item.href !== itemHref && 
+        pathname.startsWith(item.href) && 
+        item.href.length > itemHref.length
+      );
+      
+      return !betterMatch;
+    }
+    
+    return false;
+  };
 
   // Helper function to get role name
   const getRoleName = (userObj: any): string => {
@@ -161,6 +200,8 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
       setNavItems(academicDirectorNavigation);
     } else if (roleName === 'security') {
       setNavItems(securityNavigation);
+    } else if (roleName === 'warden') {
+      setNavItems(wardenNavigation);
     } else {
       // Default navigation
       setNavItems([
@@ -174,22 +215,43 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
     <>
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        <div className="flex-1 flex flex-col min-h-0 bg-blue-700">
+        <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-b from-blue-800 to-blue-600 shadow-xl">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4">
-              <span className="text-white text-xl font-bold">College Portal</span>
+            <div className="flex items-center justify-center flex-shrink-0 px-4 mb-5">
+              <span className="text-white text-2xl font-bold tracking-tight">College Portal</span>
             </div>
-            <nav className="mt-5 flex-1 px-2 space-y-1">
+            <div className="px-3 mt-2">
+              <div className="bg-blue-900 bg-opacity-40 rounded-lg p-2 mb-6">
+                <div className="flex items-center px-2 py-2">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-800 font-bold">
+                    {user?.name?.charAt(0) || 'U'}
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-white">{user?.name || 'User'}</p>
+                    <p className="text-xs text-blue-200">
+                      {getRoleName(user)?.replace('_', ' ') || 'Guest'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <nav className="mt-1 flex-1 px-3 space-y-2">
               {navItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive = isItemActive(item.href);
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`${isActive ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-600'} group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200`}
+                    className={`${
+                      isActive 
+                        ? 'bg-blue-900 text-white shadow-md' 
+                        : 'text-white hover:bg-blue-700 hover:bg-opacity-70'
+                    } group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-all duration-200`}
                   >
                     <item.icon
-                      className="mr-3 flex-shrink-0 h-6 w-6 text-blue-300"
+                      className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                        isActive ? 'text-white' : 'text-blue-200 group-hover:text-white'
+                      } transition-colors duration-200`}
                       aria-hidden="true"
                     />
                     {item.name}
@@ -198,20 +260,16 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
               })}
             </nav>
           </div>
-          <div className="flex-shrink-0 flex border-t border-blue-800 p-4">
-            <div className="flex-shrink-0 w-full group block">
-              <div className="flex items-center">
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-white">{user?.name}</p>
-                  <button
-                    onClick={logout}
-                    className="text-xs font-medium text-blue-200 hover:text-white transition-colors duration-200"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div className="flex-shrink-0 flex border-t border-blue-700 p-4">
+            <button
+              onClick={logout}
+              className="flex items-center justify-center w-full px-4 py-2 bg-blue-900 bg-opacity-50 hover:bg-opacity-70 text-sm font-medium text-white rounded-md transition-colors duration-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm11 4.586l-3.293-3.293a1 1 0 00-1.414 1.414L11.586 8H6a1 1 0 000 2h5.586l-2.293 2.293a1 1 0 101.414 1.414L14 10.414A2 2 0 0014 8.414z" clipRule="evenodd" />
+              </svg>
+              Logout
+            </button>
           </div>
         </div>
       </div>
@@ -225,7 +283,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
           ></div>
 
           <div
-            className={`relative flex-1 flex flex-col max-w-xs w-full bg-blue-700 transition ease-in-out duration-300 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            className={`relative flex-1 flex flex-col max-w-xs w-full bg-gradient-to-b from-blue-800 to-blue-600 shadow-xl transition ease-in-out duration-300 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
           >
             <div className="absolute top-0 right-0 -mr-12 pt-2">
               <button
@@ -252,21 +310,44 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
             </div>
 
             <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4">
-                <span className="text-white text-xl font-bold">College Portal</span>
+              <div className="flex items-center justify-center flex-shrink-0 px-4 mb-5">
+                <span className="text-white text-2xl font-bold tracking-tight">College Portal</span>
               </div>
-              <nav className="mt-5 px-2 space-y-1">
+              
+              <div className="px-3 mt-2">
+                <div className="bg-blue-900 bg-opacity-40 rounded-lg p-2 mb-6">
+                  <div className="flex items-center px-2 py-2">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-800 font-bold">
+                      {user?.name?.charAt(0) || 'U'}
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-white">{user?.name || 'User'}</p>
+                      <p className="text-xs text-blue-200">
+                        {getRoleName(user)?.replace('_', ' ') || 'Guest'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <nav className="mt-1 px-3 space-y-2">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const isActive = isItemActive(item.href);
                   return (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`${isActive ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-600'} group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors duration-200`}
+                      className={`${
+                        isActive 
+                          ? 'bg-blue-900 text-white shadow-md' 
+                          : 'text-white hover:bg-blue-700 hover:bg-opacity-70'
+                      } group flex items-center px-3 py-3 text-base font-medium rounded-md transition-all duration-200`}
                       onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
                     >
                       <item.icon
-                        className="mr-4 flex-shrink-0 h-6 w-6 text-blue-300"
+                        className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                          isActive ? 'text-white' : 'text-blue-200 group-hover:text-white'
+                        } transition-colors duration-200`}
                         aria-hidden="true"
                       />
                       {item.name}
@@ -275,20 +356,16 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
                 })}
               </nav>
             </div>
-            <div className="flex-shrink-0 flex border-t border-blue-800 p-4">
-              <div className="flex-shrink-0 w-full group block">
-                <div className="flex items-center">
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-white">{user?.name}</p>
-                    <button
-                      onClick={logout}
-                      className="text-xs font-medium text-blue-200 hover:text-white transition-colors duration-200"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              </div>
+            <div className="flex-shrink-0 flex border-t border-blue-700 p-4">
+              <button
+                onClick={logout}
+                className="flex items-center justify-center w-full px-4 py-2 bg-blue-900 bg-opacity-50 hover:bg-opacity-70 text-sm font-medium text-white rounded-md transition-colors duration-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm11 4.586l-3.293-3.293a1 1 0 00-1.414 1.414L11.586 8H6a1 1 0 000 2h5.586l-2.293 2.293a1 1 0 101.414 1.414L14 10.414A2 2 0 0014 8.414z" clipRule="evenodd" />
+                </svg>
+                Logout
+              </button>
             </div>
           </div>
         </div>

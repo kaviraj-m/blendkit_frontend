@@ -151,6 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('Redirecting to executive director dashboard from context');
               router.push('/dashboard/executive-director');
               break;
+            case 'hostel_warden':
+              console.log('Redirecting to hostel warden dashboard from context');
+              router.push('/dashboard/warden');
+              break;
             default:
               console.log('No specific role match, redirecting to default dashboard');
               router.push('/dashboard');

@@ -185,10 +185,10 @@ export default function StudentComplaintPage() {
                   <p className="text-gray-800 whitespace-pre-wrap">{complaint.message}</p>
                 </div>
                 
-                {complaint.reply && (
+                {complaint.response && (
                   <div className="bg-green-50 p-5 rounded-md border-l-4 border-green-500">
                     <h4 className="font-semibold text-green-800 mb-2">Response from Executive Director:</h4>
-                    <p className="text-gray-800 whitespace-pre-wrap">{complaint.reply}</p>
+                    <p className="text-gray-800 whitespace-pre-wrap">{complaint.response}</p>
                   </div>
                 )}
               </div>

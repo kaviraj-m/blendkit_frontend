@@ -2,13 +2,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
+import { complaintsApi } from '@/utils/api';
 
 interface Student {
   id: number;
   name: string;
   email: string;
+  sin_number: string;
 }
 
 interface Complaint {
@@ -79,18 +81,10 @@ export default function ExecutiveDirectorComplaintsPage() {
     try {
       setLoading(true);
       
-      // Create axios instance with authorization header
-      const api = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const response = await api.get('/api/complaints');
-      console.log('Complaints data:', response.data);
-      setComplaints(response.data);
+      // Use our API utility
+      const data = await complaintsApi.getAll(token);
+      console.log('Complaints data:', data);
+      setComplaints(data);
     } catch (error) {
       console.error('Error fetching complaints:', error);
       toast.error('Failed to load complaints');
@@ -112,25 +106,18 @@ export default function ExecutiveDirectorComplaintsPage() {
     try {
       setSubmitting(true);
       
-      // Create axios instance with authorization header
-      const api = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
       console.log(`Sending reply to complaint ID: ${selectedComplaint.id}`);
-      console.log(`Request data:`, { status: newStatus, reply: replyText });
+      console.log(`Request data:`, { status: newStatus, response: replyText });
       console.log(`Token (first 15 chars): ${token?.substring(0, 15)}...`);
       
-      const response = await api.patch(
-        `/api/complaints/${selectedComplaint.id}`,
-        { status: newStatus, reply: replyText }
+      // Use our API utility
+      const data = await complaintsApi.update(
+        selectedComplaint.id,
+        { status: newStatus, response: replyText },
+        token
       );
       
-      console.log('Reply response:', response.data);
+      console.log('Reply response:', data);
       toast.success('Reply sent successfully');
       setIsModalOpen(false);
       setReplyText('');
@@ -140,25 +127,23 @@ export default function ExecutiveDirectorComplaintsPage() {
       console.error('Error submitting reply:', error);
       
       // Add more detailed error logging
-      if (error.response) {
+      if (axios.isAxiosError(error)) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
-        console.error('Error response data:', error.response.data);
-        console.error('Error response status:', error.response.status);
-        console.error('Error response headers:', error.response.headers);
+        console.error('Error response data:', error.response?.data);
+        console.error('Error response status:', error.response?.status);
+        console.error('Error response headers:', error.response?.headers);
         
-        if (error.response.status === 403) {
+        if (error.response?.status === 403) {
           toast.error('Access denied: You do not have permission to update this complaint');
         } else {
-          toast.error(`Server error: ${error.response.data.message || 'Unknown error'}`);
+          toast.error(`Server error: ${error.response?.data?.message || 'Unknown error'}`);
         }
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('Error request:', error.request);
-        toast.error('No response received from server, please try again later');
-      } else {
+      } else if (error instanceof Error) {
         // Something happened in setting up the request that triggered an Error
         toast.error(`Error: ${error.message}`);
+      } else {
+        toast.error('An unexpected error occurred');
       }
     } finally {
       setSubmitting(false);
@@ -258,21 +243,30 @@ export default function ExecutiveDirectorComplaintsPage() {
           <div className="divide-y divide-gray-200">
             {filteredComplaints.map((complaint) => (
               <div key={complaint.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">{complaint.subject}</h3>
-                  <div className="flex items-center space-x-3">
-                    {getStatusBadge(complaint.status)}
-                    <span className="text-sm font-medium text-gray-600">{formatDate(complaint.created_at)}</span>
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">{complaint.subject}</h3>
+                  <div className="bg-gray-50 p-4 rounded-md mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-700 mb-1">Student Information</h4>
+                        <p className="text-gray-600">Name: {complaint.student.name}</p>
+                        <p className="text-gray-600">Email: {complaint.student.email}</p>
+                        <p className="text-gray-600">SIN Number: {complaint.student.sin_number}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-700 mb-1">Complaint Details</h4>
+                        <p className="text-gray-600">Status: {getStatusBadge(complaint.status)}</p>
+                        <p className="text-gray-600">Submitted: {formatDate(complaint.created_at)}</p>
+                        {complaint.updated_at !== complaint.created_at && (
+                          <p className="text-gray-600">Last Updated: {formatDate(complaint.updated_at)}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-gray-700 mb-2">Complaint Message</h4>
+                      <p className="text-gray-800 whitespace-pre-wrap bg-white p-4 rounded-md border border-gray-200">{complaint.message}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="mb-4 bg-blue-50 p-3 rounded-md inline-block">
-                  <span className="text-sm font-semibold text-blue-700">From: {complaint.student.name}</span>
-                  <span className="text-sm text-blue-600 ml-2">({complaint.student.email})</span>
-                </div>
-                
-                <div className="mb-5 bg-gray-50 p-4 rounded-md border-l-4 border-gray-300">
-                  <p className="text-gray-800 whitespace-pre-wrap">{complaint.message}</p>
                 </div>
                 
                 {complaint.reply && (

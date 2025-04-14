@@ -321,11 +321,25 @@ export const gatePassApi = {
   // Update gate pass by Hostel Warden
   updateByHostelWarden: async (token: string, id: number, updateData: UpdateGatePassStatusByHostelWardenDto): Promise<GatePass> => {
     try {
+      console.log(`Hostel Warden updating gate pass ${id} with data:`, JSON.stringify(updateData));
       const authAxios = createAuthorizedAxios(token);
-      const response = await authAxios.patch(`/${id}/hostel-warden-approval`, updateData);
+      
+      // Ensure proper object format for API
+      const payload = {
+        status: updateData.status.toLowerCase(),
+        hostel_warden_comment: updateData.remarks || ''
+      };
+      
+      console.log(`Sending formatted payload to API:`, JSON.stringify(payload));
+      const response = await authAxios.patch(`/${id}/hostel-warden-approval`, payload);
       return response.data;
     } catch (error) {
       console.error(`Error updating gate pass ${id} by Hostel Warden:`, error);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+      }
       throw error;
     }
   },

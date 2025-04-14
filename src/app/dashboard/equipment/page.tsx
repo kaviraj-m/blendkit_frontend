@@ -53,6 +53,9 @@ export default function EquipmentPage() {
   const trainingTypes = [...new Set(equipment.map(item => item.trainingType).filter(Boolean))];
 
   const canManageEquipment = user && hasPermission(user.role, 'manage_equipment');
+  const isExecutiveDirector = user && 
+    (typeof user.role === 'string' ? user.role === 'executive_director' : 
+    (user.role?.name === 'executive_director'));
 
   useEffect(() => {
     fetchEquipment();
@@ -266,22 +269,22 @@ export default function EquipmentPage() {
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <style jsx>{selectStyles}</style>
-      
+    <div className="p-4 max-w-7xl mx-auto">
+      <style jsx global>{selectStyles}</style>
       <GymNavigation />
-      
-      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
+
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Gym Equipment</h1>
-          <p className="text-gray-600">View and manage the gym equipment available for workouts</p>
+          <h1 className="text-3xl font-bold text-gray-800">Equipment</h1>
+          <p className="text-gray-600">Manage the gym equipment available for workouts</p>
         </div>
-        {canManageEquipment && (
+        
+        {canManageEquipment && !isExecutiveDirector && (
           <button
             onClick={openAddModal}
-            className="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
           >
-            <span className="mr-2">+</span> Add New Equipment
+            <span>+</span> Add New Equipment
           </button>
         )}
       </div>

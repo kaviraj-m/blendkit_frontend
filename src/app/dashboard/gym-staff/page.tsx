@@ -30,6 +30,9 @@ export default function GymStaffDashboard() {
   const { user, token } = useAuth();
   const router = useRouter();
   const [greeting, setGreeting] = useState('');
+  const [currentTime, setCurrentTime] = useState('');
+  const [currentDate, setCurrentDate] = useState('');
+  const [motivationalQuote, setMotivationalQuote] = useState('');
   
   // Helper function to get role name
   const getRoleName = (userObj: any): string => {
@@ -41,6 +44,15 @@ export default function GymStaffDashboard() {
         ? userObj.role.name 
         : '');
   };
+
+  // Motivational quotes for gym staff
+  const quotes = [
+    "The only bad workout is the one that didn't happen.",
+    "Your body can stand almost anything. It's your mind that you have to convince.",
+    "Success starts with self-discipline.",
+    "The pain you feel today will be the strength you feel tomorrow.",
+    "Don't stop when you're tired. Stop when you're done."
+  ];
   
   useEffect(() => {
     // Redirect non-gym staff users back to the main dashboard
@@ -50,9 +62,35 @@ export default function GymStaffDashboard() {
     
     // Set greeting based on time of day
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning');
-    else if (hour < 18) setGreeting('Good afternoon');
-    else setGreeting('Good evening');
+    if (hour >= 5 && hour < 12) {
+      setGreeting('Good morning');
+    } else if (hour >= 12 && hour < 17) {
+      setGreeting('Good afternoon');
+    } else if (hour >= 17 && hour < 21) {
+      setGreeting('Good evening');
+    } else {
+      setGreeting('Good night');
+    }
+
+    // Set a random motivational quote
+    setMotivationalQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+
+    // Update time and date
+    const updateDateTime = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+      setCurrentDate(now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }));
+    };
+
+    updateDateTime();
+    const interval = setInterval(updateDateTime, 1000);
+
+    return () => clearInterval(interval);
   }, [user, router]);
 
   if (!user || getRoleName(user) !== 'gym_staff') {
@@ -66,13 +104,33 @@ export default function GymStaffDashboard() {
   return (
     <>
       {/* Welcome Banner */}
-      <div className="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">
-          {greeting}, {user?.name}!
-        </h1>
-        <p className="text-blue-100">
-          Welcome to the Gym Management Portal. Manage all your gym activities from here.
-        </p>
+      <div className="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center relative z-10">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold mb-2">
+              {greeting}, {user?.name}!
+            </h1>
+            <p className="text-blue-100 mb-4">
+              Welcome to the Gym Management Portal. Manage all your gym activities from here.
+            </p>
+            <p className="text-blue-200 italic">
+              "{motivationalQuote}"
+            </p>
+          </div>
+          <div className="mt-4 md:mt-0 text-right">
+            <div className="text-2xl font-semibold mb-1">{currentTime}</div>
+            <div className="text-blue-100">{currentDate}</div>
+            <div className="mt-2 text-sm text-blue-200">
+              <span className="inline-block px-2 py-1 rounded-full bg-white/10">
+                Gym Staff
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
       
       {/* Gym Management Cards */}

@@ -305,7 +305,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Gym Schedule', href: '/dashboard/gym-schedule', icon: CalendarIcon },
     { name: 'Workout Posts', href: '/dashboard/gym-posts', icon: DocumentIcon },
     { name: 'Equipment', href: '/dashboard/equipment', icon: GymIcon },
-    { name: 'Gym Attendance', href: '/dashboard/gym-attendance', icon: AttendanceIcon },
     { name: 'Budget & Finance', href: '/dashboard/budget', icon: BudgetIcon },
     { name: 'Reports', href: '/dashboard/reports', icon: ReportIcon },
     { name: 'Staff Management', href: '/dashboard/staff', icon: StaffIcon },

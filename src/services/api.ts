@@ -387,83 +387,248 @@ export const attendanceApi = {
       if (filters.isPresent !== undefined) params.append('isPresent', filters.isPresent.toString());
       if (params.toString()) url += `?${params.toString()}`;
     }
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return handleResponse<Attendance[]>(response);
+    
+    try {
+      console.log(`Fetching attendance records from: ${url}`);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching attendance records:', error);
+      
+      // Try direct API call as fallback
+      console.log('Trying direct API call to attendance endpoint');
+      const directUrl = `http://localhost:3001/api/attendance${filters ? '?' + new URLSearchParams(
+        Object.entries(filters).filter(([_, v]) => v !== undefined) as [string, string][]
+      ).toString() : ''}`;
+      
+      console.log(`Direct API call to: ${directUrl}`);
+      const directResponse = await fetch(directUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!directResponse.ok) {
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
+    }
   },
+  
   getById: async (id: number, token: string): Promise<Attendance> => {
-    const response = await fetch(`${API_URL}/attendance/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return handleResponse<Attendance>(response);
+    try {
+      const response = await fetch(`${API_URL}/attendance/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching attendance record ${id}:`, error);
+      
+      // Try direct API call as fallback
+      const directResponse = await fetch(`http://localhost:3001/api/attendance/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!directResponse.ok) {
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
+    }
   },
+  
   create: async (data: Partial<Attendance>, token: string): Promise<Attendance> => {
-    const response = await fetch(`${API_URL}/attendance`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Attendance>(response);
+    try {
+      console.log('Creating attendance record with data:', data);
+      const response = await fetch(`${API_URL}/attendance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating attendance record:', error);
+      
+      // Try direct API call as fallback
+      console.log('Trying direct API call to create attendance record');
+      const directResponse = await fetch(`http://localhost:3001/api/attendance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!directResponse.ok) {
+        const errorText = await directResponse.text();
+        console.error('Direct API error response:', errorText);
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
+    }
   },
+  
   update: async (id: number, data: Partial<Attendance>, token: string): Promise<Attendance> => {
-    const response = await fetch(`${API_URL}/attendance/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Attendance>(response);
+    try {
+      console.log(`Updating attendance record ${id} with data:`, data);
+      const response = await fetch(`${API_URL}/attendance/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`Error updating attendance record ${id}:`, error);
+      
+      // Try direct API call as fallback
+      console.log(`Trying direct API call to update attendance record ${id}`);
+      const directResponse = await fetch(`http://localhost:3001/api/attendance/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!directResponse.ok) {
+        const errorText = await directResponse.text();
+        console.error('Direct API error response:', errorText);
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
+    }
   },
+  
   delete: async (id: number, token: string): Promise<void> => {
-    const response = await fetch(`${API_URL}/attendance/${id}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return handleResponse<void>(response);
-  },
-  checkIn: async (data: Partial<Attendance>, token: string): Promise<Attendance> => {
-    const response = await fetch(`${API_URL}/attendance/check-in`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Attendance>(response);
-  },
-  checkOut: async (id: number, token: string): Promise<Attendance> => {
-    const response = await fetch(`${API_URL}/attendance/${id}/check-out`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return handleResponse<Attendance>(response);
+    try {
+      const response = await fetch(`${API_URL}/attendance/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting attendance record ${id}:`, error);
+      
+      // Try direct API call as fallback
+      const directResponse = await fetch(`http://localhost:3001/api/attendance/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!directResponse.ok) {
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+    }
   },
 };
 
 // User API calls
 export const userApi = {
   getAll: async (token: string): Promise<User[]> => {
-    const response = await fetch(`${API_URL}/users`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return handleResponse<User[]>(response);
+    try {
+      const response = await fetch(`${API_URL}/users`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Check if the response is an object with a users array property
+      // This is likely based on your backend implementation
+      if (data && typeof data === 'object' && Array.isArray(data.users)) {
+        console.log(`Received ${data.users.length} users from API`);
+        return data.users;
+      }
+      
+      // Handle direct array response
+      if (Array.isArray(data)) {
+        console.log(`Received ${data.length} users from API`);
+        return data;
+      }
+      
+      console.error('Unexpected API response format:', data);
+      return [];
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return [];
+    }
+  },
+  getStudents: async (token: string): Promise<User[]> => {
+    try {
+      const response = await fetch(`${API_URL}/users/students`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      throw error;
+    }
   },
   getById: async (id: number, token: string): Promise<User> => {
     const response = await fetch(`${API_URL}/users/${id}`, {

@@ -2,160 +2,281 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { attendanceApi } from '@/services/api';
-import { Attendance } from '@/types';
-import { hasPermission } from '@/utils/rbac';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import { attendanceApi, userApi } from '@/services/api';
+import { User, Attendance, Role } from '@/types';
 import GymNavigation from '@/components/GymNavigation';
+import { format, parseISO } from 'date-fns';
+import { hasPermission } from '@/utils/rbac';
+
+// Helper component for loading state
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-64">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+  </div>
+);
 
 export default function GymAttendancePage() {
   const { user, token } = useAuth();
-  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [checkInStatus, setCheckInStatus] = useState<string | null>(null);
+  const router = useRouter();
   
-  // Determine user permissions
-  const canViewAllAttendance = user && hasPermission(user.role, 'view_attendance');
-  const canManageAttendance = user && hasPermission(user.role, 'manage_attendance');
-  const canViewOwnAttendance = user && hasPermission(user.role, 'view_own_attendance');
+  // States for attendance management
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<User[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
+  const [attendanceDate, setAttendanceDate] = useState<string>(
+    format(new Date(), 'yyyy-MM-dd')
+  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [notes, setNotes] = useState('');
+  const [activeTab, setActiveTab] = useState<'checkin' | 'history'>('checkin');
+  const [error, setError] = useState<string | null>(null);
 
+  // Initial data loading
   useEffect(() => {
-    if (token) {
-      fetchAttendanceRecords();
+    // Redirect non-gym staff users back to the main dashboard
+    if (user) {
+      const roleName = typeof user.role === 'string' 
+        ? user.role 
+        : (user.role && typeof user.role === 'object' && user.role.name 
+          ? user.role.name 
+          : '');
+      
+      if (roleName !== 'gym_staff') {
+        router.push('/dashboard');
+        return;
+      }
+      
+      // User has correct role, load data
+      // First load attendance data, then try to fetch students
+      fetchAttendanceRecords().then(() => {
+        fetchStudents();
+      });
     }
-  }, [token, selectedDate]);
+  }, [user, router, token]);
 
+  // Fetch attendance records
   const fetchAttendanceRecords = async () => {
-    setIsLoading(true);
-    setError(null);
-
+    if (!token) return;
+    
     try {
-      if (!token) return;
-
-      // Different fetch logic based on user role
-      let filters = {};
+      setLoading(true);
+      const filters = {
+        date: attendanceDate,
+      };
       
-      if (!canViewAllAttendance && canViewOwnAttendance && user) {
-        // Students can only see their own records
-        filters = { userId: user.id };
-      }
-      
-      if (selectedDate) {
-        filters = { ...filters, date: selectedDate };
-      }
-
+      console.log('Fetching attendance records with filters:', filters);
       const data = await attendanceApi.getAll(token, filters);
+      console.log('Received attendance records:', data);
       setAttendanceRecords(data);
-      
-      // Check if user is already checked in today
-      if (canViewOwnAttendance && user) {
-        const today = new Date().toISOString().split('T')[0];
-        const todayRecord = data.find(record => {
-          const recordDate = new Date(record.check_in).toISOString().split('T')[0];
-          return recordDate === today && record.user_id === user.id;
+      return data; // Return data for potential use in fetchStudents
+    } catch (err) {
+      console.error('Failed to fetch attendance records:', err);
+      toast.error('Could not load attendance data');
+      setError('Failed to load attendance records. Please try again.');
+      return []; // Return empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch users
+  const fetchStudents = async () => {
+    if (!token) {
+      setError('No authentication token available');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      try {
+        // Use the users API endpoint
+        console.log('Fetching all users from API');
+        
+        // Use direct fetch for debugging
+        const response = await fetch('http://localhost:3001/api/users', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         });
         
-        if (todayRecord) {
-          setCheckInStatus(todayRecord.check_out ? 'checked-out' : 'checked-in');
+        if (!response.ok) {
+          throw new Error(`API returned status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Raw API response:', data);
+        
+        // Check if the response is wrapped in an object
+        let users: User[] = [];
+        if (data && typeof data === 'object' && Array.isArray(data.users)) {
+          users = data.users;
+          console.log(`Found ${users.length} users in data.users`);
+        } else if (Array.isArray(data)) {
+          users = data;
+          console.log(`Found ${users.length} users in data array`);
         } else {
-          setCheckInStatus(null);
+          console.error('Unexpected API response format:', data);
+          throw new Error('Invalid API response format');
+        }
+        
+        console.log(`Setting ${users.length} users`);
+        if (users.length === 0) {
+          setError('No users found in API response');
+        } else {
+          setError(null);
+        }
+        
+        setStudents(users);
+      } catch (apiError: any) {
+        console.error('Failed to fetch users from API:', apiError);
+        setError(`API Error: ${apiError.message || 'Unknown error'}`);
+        
+        // Continue with fallback
+        if (attendanceRecords.length > 0) {
+          console.log('Using attendance records to extract user information');
+          const uniqueUserIds = [...new Set(attendanceRecords.map(record => 
+            record.user_id || record.userId || 0
+          ))];
+          
+          const uniqueUsers = uniqueUserIds
+            .filter(id => id > 0)
+            .map(id => {
+              const record = attendanceRecords.find(r => (r.user_id || r.userId) === id);
+              if (record?.user) {
+                // If the attendance record already includes user info, use it
+                return record.user;
+              }
+              
+              // Otherwise create a placeholder user
+              return {
+                id,
+                name: `User ID: ${id}`,
+                sin_number: '',
+                role: { id: 1, name: 'user', created_at: '', updated_at: '' } as Role,
+                department_id: 1,
+                college_id: 1,
+                dayscholar_hosteller_id: 1,
+                quota_id: 1,
+                role_id: 1,
+                created_at: '',
+                updated_at: '',
+                email: ''
+              } as User;
+            });
+          
+          setStudents(uniqueUsers);
+          if (uniqueUsers.length > 0) {
+            toast.success(`Found ${uniqueUsers.length} users from attendance records`);
+          } else {
+            toast.error('No user data available');
+          }
+        } else {
+          // No attendance records and API calls failed
+          toast.error('Could not load user data. Please try with a different date.');
         }
       }
     } catch (err) {
-      setError('Failed to load attendance records');
-      console.error(err);
+      console.error('Failed to fetch users:', err);
+      toast.error('Could not load user data');
+      setError('Failed to load users. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  // Handle checking in a student
   const handleCheckIn = async () => {
-    setIsLoading(true);
-    setError(null);
-
+    if (!token || !selectedStudent) {
+      toast.error('Please select a student');
+      return;
+    }
+    
     try {
-      if (!token || !user) return;
-
-      const checkInData = {
-        user_id: user.id,
-        check_in: new Date().toISOString(),
-        is_present: true
-      };
-
-      await attendanceApi.checkIn(checkInData, token);
-      setCheckInStatus('checked-in');
-      await fetchAttendanceRecords();
+      setLoading(true);
+      const currentTime = new Date().toISOString();
+      await attendanceApi.create({
+        userId: selectedStudent,
+        isPresent: true,
+        notes: notes.trim(),
+        checkInTime: currentTime
+      }, token);
+      
+      toast.success('Student checked in successfully');
+      setNotes('');
+      setSelectedStudent(null);
+      
+      // Refresh attendance records
+      fetchAttendanceRecords();
     } catch (err) {
-      setError('Failed to check in');
-      console.error(err);
+      console.error('Failed to check in student:', err);
+      toast.error('Could not check in student');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCheckOut = async () => {
-    setIsLoading(true);
-    setError(null);
-
+  // Handle checking out a student
+  const handleCheckOut = async (attendanceId: number) => {
+    if (!token) return;
+    
     try {
-      if (!token || !user) return;
-
-      // Find the current check-in record
-      const today = new Date().toISOString().split('T')[0];
-      const todayRecord = attendanceRecords.find(record => {
-        const recordDate = new Date(record.check_in).toISOString().split('T')[0];
-        return recordDate === today && record.user_id === user.id && !record.check_out;
-      });
-
-      if (!todayRecord) {
-        setError('No active check-in found');
-        setIsLoading(false);
-        return;
-      }
-
-      await attendanceApi.checkOut(todayRecord.id, token);
-      setCheckInStatus('checked-out');
-      await fetchAttendanceRecords();
+      setLoading(true);
+      await attendanceApi.update(attendanceId, {
+        checkOutTime: new Date().toISOString(),
+      }, token);
+      
+      toast.success('Student checked out successfully');
+      
+      // Refresh attendance records
+      fetchAttendanceRecords();
     } catch (err) {
-      setError('Failed to check out');
-      console.error(err);
+      console.error('Failed to check out student:', err);
+      toast.error('Could not check out student');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
+
+  // Handle date change
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAttendanceDate(e.target.value);
+  };
+
+  // Filter students based on search query
+  const filteredStudents = Array.isArray(students) 
+    ? students.filter(student => {
+        if (!student) return false;
+        const name = student.name || '';
+        const sinNumber = student.sin_number || '';
+        return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+               sinNumber.toLowerCase().includes(searchQuery.toLowerCase());
+      })
+    : [];
 
   // Format date for display
   const formatDateTime = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    };
-    return new Date(dateString).toLocaleString('en-US', options);
+    if (!dateString) return 'Not checked in';
+    try {
+      return format(parseISO(dateString), 'MMM dd, yyyy hh:mm a');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
   };
 
-  // Calculate duration between check-in and check-out
-  const calculateDuration = (checkIn: string, checkOut?: string) => {
-    if (!checkOut) return 'Active';
-    
-    const checkInTime = new Date(checkIn);
-    const checkOutTime = new Date(checkOut);
-    const diffMs = checkOutTime.getTime() - checkInTime.getTime();
-    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return `${diffHrs}h ${diffMins}m`;
+  // Get student name by ID
+  const getStudentName = (id: number) => {
+    if (!Array.isArray(students)) return `User ID: ${id}`;
+    const student = students.find(s => s && s.id === id);
+    return student ? student.name : `User ID: ${id}`;
   };
 
-  if (isLoading && attendanceRecords.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
+  if (!user) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -165,11 +286,7 @@ export default function GymAttendancePage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Gym Attendance</h1>
-          <p className="text-gray-600">
-            {canViewAllAttendance 
-              ? "Track and manage student attendance records" 
-              : "Record your gym attendance and view history"}
-          </p>
+          <p className="text-gray-600">Track user gym usage and manage attendance</p>
         </div>
       </div>
 
@@ -179,91 +296,209 @@ export default function GymAttendancePage() {
         </div>
       )}
 
-      {/* Check-in/out section for students */}
-      {canViewOwnAttendance && (
-        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Today's Attendance</h2>
-          <div className="flex space-x-4">
+      {/* Tab Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <ul className="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500">
+          <li className="mr-2">
             <button
-              onClick={handleCheckIn}
-              disabled={checkInStatus === 'checked-in' || checkInStatus === 'checked-out'}
-              className={`px-4 py-2 rounded-md ${checkInStatus === 'checked-in' || checkInStatus === 'checked-out' ? 'bg-gray-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+              className={`inline-flex items-center p-4 border-b-2 rounded-t-lg ${
+                activeTab === 'checkin'
+                  ? 'text-blue-600 border-blue-600 active'
+                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveTab('checkin')}
             >
-              Check In
+              Check In/Out
             </button>
+          </li>
+          <li className="mr-2">
             <button
-              onClick={handleCheckOut}
-              disabled={checkInStatus !== 'checked-in'}
-              className={`px-4 py-2 rounded-md ${checkInStatus !== 'checked-in' ? 'bg-gray-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+              className={`inline-flex items-center p-4 border-b-2 rounded-t-lg ${
+                activeTab === 'history'
+                  ? 'text-blue-600 border-blue-600 active'
+                  : 'border-transparent hover:text-gray-600 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveTab('history')}
             >
-              Check Out
+              Attendance History
             </button>
+          </li>
+        </ul>
+      </div>
+
+      {/* Check In Form */}
+      {activeTab === 'checkin' && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Check In User</h2>
+          
+          <div className="mb-4">
+            <label htmlFor="studentSearch" className="block text-sm font-medium text-gray-700 mb-1">
+              Search User
+            </label>
+            <input
+              type="text"
+              id="studentSearch"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              placeholder="Search by name or ID"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
+          
+          <div className="mb-4">
+            <label htmlFor="studentSelect" className="block text-sm font-medium text-gray-700 mb-1">
+              Select User
+            </label>
+            <select
+              id="studentSelect"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+              value={selectedStudent || ''}
+              onChange={(e) => setSelectedStudent(Number(e.target.value))}
+            >
+              <option value="" className="text-gray-500">-- Select a user --</option>
+              {Array.isArray(filteredStudents) && filteredStudents.map((student) => (
+                <option 
+                  key={student.id} 
+                  value={student.id}
+                  className="text-gray-900"
+                >
+                  {student.name} {student.sin_number ? `(${student.sin_number})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+              Notes (Optional)
+            </label>
+            <textarea
+              id="notes"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              rows={3}
+              placeholder="Add any notes about this attendance"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            ></textarea>
+          </div>
+          
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            onClick={handleCheckIn}
+            disabled={!selectedStudent || loading}
+          >
+            {loading ? 'Processing...' : 'Check In User'}
+          </button>
         </div>
       )}
 
-      {/* Date filter */}
-      <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Attendance Records</h2>
-          <div className="flex items-center space-x-2">
-            <label htmlFor="date-filter" className="text-gray-700">Filter by date:</label>
+      {/* Attendance History */}
+      {activeTab === 'history' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+            <h2 className="text-xl font-semibold mb-2 md:mb-0">Attendance History</h2>
+            
+            <div className="flex items-center">
+              <label htmlFor="dateFilter" className="mr-2 text-sm font-medium text-gray-700">
+                Date:
+              </label>
             <input
-              id="date-filter"
               type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="border rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+                id="dateFilter"
+                className="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                value={attendanceDate}
+                onChange={handleDateChange}
+              />
+              <button
+                className="ml-2 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                onClick={() => {
+                  fetchAttendanceRecords().then(() => {
+                    fetchStudents();
+                  });
+                }}
+              >
+                Filter
+              </button>
+            </div>
           </div>
+          
+          {loading ? (
+            <LoadingSpinner />
+          ) : attendanceRecords.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              No attendance records found for this date
         </div>
-
-        {/* Attendance records table */}
+          ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead>
-              <tr className="bg-gray-50 border-b">
-                {canViewAllAttendance && <th className="py-2 px-4 text-left text-gray-700">User</th>}
-                <th className="py-2 px-4 text-left text-gray-700">Check-in Time</th>
-                <th className="py-2 px-4 text-left text-gray-700">Check-out Time</th>
-                <th className="py-2 px-4 text-left text-gray-700">Duration</th>
-                <th className="py-2 px-4 text-left text-gray-700">Status</th>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Student
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Check In Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Check Out Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
               </tr>
             </thead>
-            <tbody>
-              {attendanceRecords.length > 0 ? (
-                attendanceRecords.map((record) => (
-                  <tr key={record.id} className="border-b hover:bg-gray-50">
-                    {canViewAllAttendance && (
-                      <td className="py-3 px-4 text-gray-800 font-medium">
-                        {record.user?.name || `User ID: ${record.user_id}`}
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {attendanceRecords.map((record) => (
+                    <tr key={record.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {record.user ? record.user.name : getStudentName(record.user_id || record.userId || 0)}
+                        </div>
                       </td>
-                    )}
-                    <td className="py-3 px-4 text-gray-800">{formatDateTime(record.check_in)}</td>
-                    <td className="py-3 px-4 text-gray-800">
-                      {record.check_out ? formatDateTime(record.check_out) : 'Not checked out'}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDateTime(record.check_in || record.checkInTime || '')}
                     </td>
-                    <td className="py-3 px-4 text-gray-800">
-                      {calculateDuration(record.check_in, record.check_out)}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {(record.check_out || record.checkOutTime) 
+                          ? formatDateTime(record.check_out || record.checkOutTime || '') 
+                          : 'Not checked out'}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${record.is_present ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {record.is_present ? 'Present' : 'Absent'}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          record.is_present || record.isPresent
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {record.is_present || record.isPresent ? 'Present' : 'Absent'}
                       </span>
                     </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={canViewAllAttendance ? 5 : 4} className="py-4 text-center text-gray-500">
-                    No attendance records found
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {record.notes || 'No notes'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {!(record.check_out || record.checkOutTime) && (
+                          <button
+                            className="text-indigo-600 hover:text-indigo-900"
+                            onClick={() => handleCheckOut(record.id)}
+                          >
+                            Check Out
+                          </button>
+                        )}
                   </td>
                 </tr>
-              )}
+                  ))}
             </tbody>
           </table>
         </div>
+          )}
       </div>
+      )}
     </div>
   );
 }

@@ -18,13 +18,13 @@ export default function ProfilePage() {
     father_name: '',
     year: 0,
     batch: '',
+    sin_number: '',
+    department: '',
+    college: '',
+    accommodation: '',
+    quota: ''
   });
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -41,6 +41,11 @@ export default function ProfilePage() {
           father_name: profileData.father_name || '',
           year: profileData.year || 0,
           batch: profileData.batch || '',
+          sin_number: profileData.sin_number || '',
+          department: profileData.department?.name || '',
+          college: profileData.college?.name || '',
+          accommodation: profileData.dayScholarHosteller?.type || '',
+          quota: profileData.quota?.name || ''
         });
       } catch (error) {
         console.error('Failed to fetch profile:', error);
@@ -52,6 +57,25 @@ export default function ProfilePage() {
 
     fetchUserProfile();
   }, [token]);
+
+  // Update form data when profileData changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        father_name: user.father_name || '',
+        year: user.year || 0,
+        batch: user.batch || '',
+        sin_number: user.sin_number || '',
+        department: user.department?.name || '',
+        college: user.college?.name || '',
+        accommodation: user.dayScholarHosteller?.type || '',
+        quota: user.quota?.name || ''
+      });
+    }
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -66,58 +90,77 @@ export default function ProfilePage() {
     if (!token) return;
 
     try {
-      const updatedUser = await userApi.updateProfile(formData, token);
-      setUser(updatedUser);
-      toast.success('Profile updated successfully');
+      setSubmitting(true);
+      // Need to convert string values back to objects where needed
+      const userData: Partial<User> = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        father_name: formData.father_name,
+        year: formData.year,
+        batch: formData.batch,
+        // Keep the original references to nested objects
+        department: user?.department,
+        college: user?.college,
+        sin_number: formData.sin_number,
+        dayScholarHosteller: user?.dayScholarHosteller,
+        quota: user?.quota
+      };
+
+      await userApi.updateProfile(userData, token);
       setEditing(false);
+      toast.success('Profile updated successfully');
+      
+      // Refresh user data
+      const updatedProfile = await userApi.getProfile(token);
+      setUser(updatedProfile);
     } catch (error) {
       console.error('Failed to update profile:', error);
       toast.error('Failed to update profile');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPasswordData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+  // Helper function to determine if a field should be shown based on user role
+  const shouldShowField = (fieldName: string, role: string | undefined): boolean => {
+    if (!role) return true;
+    
+    const roleToLower = role.toLowerCase();
+    
+    switch (fieldName) {
+      case 'father_name':
+        return roleToLower === 'student';
+      case 'sin_number':
+        return roleToLower === 'student';
+      case 'year':
+        return roleToLower === 'student';
+      case 'batch':
+        return roleToLower === 'student';
+      case 'department':
+        return ['student', 'staff', 'hod', 'academic_director'].includes(roleToLower);
+      case 'college':
+        return ['student', 'staff', 'hod', 'academic_director'].includes(roleToLower);
+      case 'accommodation':
+        return roleToLower === 'student';
+      case 'quota':
+        return roleToLower === 'student';
+      default:
+        return true;
+    }
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-
-    // Validate passwords
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords don't match");
-      return;
+  // Helper function to determine if a field is editable based on user role
+  const isFieldEditable = (fieldName: string, role: string | undefined): boolean => {
+    if (!role) return false;
+    
+    const roleToLower = role.toLowerCase();
+    
+    if (roleToLower === 'student') {
+      return ['name', 'email', 'phone', 'year'].includes(fieldName);
     }
-
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    try {
-      // This is a placeholder - you'll need to create this endpoint and method
-      // await userApi.changePassword({
-      //   currentPassword: passwordData.currentPassword,
-      //   newPassword: passwordData.newPassword,
-      // }, token);
-      
-      // For now, just show a success message
-      toast.success('Password changed successfully');
-      setChangingPassword(false);
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-    } catch (error) {
-      console.error('Failed to change password:', error);
-      toast.error('Failed to change password');
-    }
+    
+    return ['name', 'email', 'phone'].includes(fieldName);
   };
 
   if (loading) {
@@ -138,357 +181,301 @@ export default function ProfilePage() {
     );
   }
 
-  const passwordChangeForm = (
-    <div className="mt-6 bg-white shadow-md rounded-lg overflow-hidden border border-blue-100">
-      <div className="p-6 border-b border-blue-200 flex justify-between items-center bg-blue-50">
-        <h2 className="text-xl font-semibold text-blue-800">Change Password</h2>
-        {!changingPassword && (
-          <button
-            onClick={() => setChangingPassword(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          >
-            Change Password
-          </button>
-        )}
-      </div>
-      
-      {changingPassword && (
-        <form onSubmit={handlePasswordSubmit} className="p-6 space-y-6">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-blue-700 mb-1">
-                Current Password
-              </label>
-              <input
-                type="password"
-                id="currentPassword"
-                name="currentPassword"
-                value={passwordData.currentPassword}
-                onChange={handlePasswordChange}
-                className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-blue-700 mb-1">
-                New Password
-              </label>
-              <input
-                type="password"
-                id="newPassword"
-                name="newPassword"
-                value={passwordData.newPassword}
-                onChange={handlePasswordChange}
-                className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-                minLength={6}
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-blue-700 mb-1">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={passwordData.confirmPassword}
-                onChange={handlePasswordChange}
-                className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-                minLength={6}
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => {
-                setChangingPassword(false);
-                setPasswordData({
-                  currentPassword: '',
-                  newPassword: '',
-                  confirmPassword: '',
-                });
-              }}
-              className="px-4 py-2 border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-            >
-              Update Password
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
-  );
+  const userRole = typeof user.role === 'object' ? user.role.name : (user.role || '');
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-blue-100">
-        <div className="p-6 border-b border-blue-200 flex justify-between items-center bg-blue-50">
-          <h1 className="text-2xl font-bold text-blue-800">Profile</h1>
-          {!editing && (
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-xl shadow p-6 mb-8">
+        <h1 className="text-2xl font-bold text-white">My Profile</h1>
+        <p className="text-slate-300 mt-1">View and manage your personal information</p>
+      </div>
+      
+      <div className="bg-white shadow-lg rounded-xl overflow-hidden mb-8">
+        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-slate-800">
+            {editing ? 'Edit Profile' : 'Personal Information'}
+          </h2>
+          {!editing ? (
             <button
               onClick={() => setEditing(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition shadow-sm"
             >
               Edit Profile
             </button>
+          ) : (
+            <button
+              onClick={() => setEditing(false)}
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition"
+            >
+              Cancel
+            </button>
           )}
         </div>
-
-        {editing ? (
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-blue-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-blue-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-blue-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone || ''}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="father_name" className="block text-sm font-medium text-blue-700 mb-1">
-                  Father's Name
-                </label>
-                <input
-                  type="text"
-                  id="father_name"
-                  name="father_name"
-                  value={formData.father_name || ''}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="year" className="block text-sm font-medium text-blue-700 mb-1">
-                  Current Year of Study
-                </label>
-                <input
-                  type="number"
-                  id="year"
-                  name="year"
-                  value={formData.year || ''}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  min="1"
-                  max="6"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="batch" className="block text-sm font-medium text-blue-700 mb-1">
-                  Batch/Graduation Year
-                </label>
-                <input
-                  type="text"
-                  id="batch"
-                  name="batch"
-                  value={formData.batch || ''}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="px-4 py-2 border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-              >
-                Save Changes
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Full Name</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">{user.name}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Email</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">{user.email}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Phone Number</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">
-                    {user.phone || 'Not provided'}
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Father's Name</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">
-                    {user.father_name || 'Not provided'}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Role</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900 capitalize">
-                    {user.role?.name || 'Unknown'}
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Student ID</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">
-                    {user.sin_number || 'Not assigned'}
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Year of Study</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">
-                    {user.year ? `Year ${user.year}` : 'Not specified'}
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-blue-600">Batch/Graduation Year</h3>
-                  <p className="mt-1 text-base font-medium text-gray-900">
-                    {user.batch || 'Not specified'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {passwordChangeForm}
-      
-      <div className="mt-8 bg-white shadow-md rounded-lg overflow-hidden border border-blue-100">
-        <div className="p-6 border-b border-blue-200 bg-blue-50">
-          <h2 className="text-xl font-semibold text-blue-800">Educational Information</h2>
-        </div>
         
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-blue-600">Department</h3>
-                <p className="mt-1 text-base font-medium text-gray-900">
-                  {user.department?.name || 'Not specified'}
-                </p>
-                <p className="mt-1 text-sm text-blue-500">
-                  {user.department?.code || ''}
-                </p>
-                {user.department?.description && (
-                  <p className="mt-1 text-sm text-blue-400">
-                    {user.department.description}
-                  </p>
+        <div className="p-6">
+          {editing ? (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Name */}
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                    disabled={!isFieldEditable('name', userRole)}
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                    disabled={!isFieldEditable('email', userRole)}
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                    disabled={!isFieldEditable('phone', userRole)}
+                  />
+                </div>
+
+                {/* Father Name - Only for students */}
+                {shouldShowField('father_name', userRole) && (
+                  <div>
+                    <label htmlFor="father_name" className="block text-sm font-medium text-slate-700 mb-1">
+                      Father's Name
+                    </label>
+                    <input
+                      type="text"
+                      id="father_name"
+                      name="father_name"
+                      value={formData.father_name}
+                      onChange={handleChange}
+                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      disabled
+                    />
+                  </div>
                 )}
+
+                {/* SIN Number - Only for students */}
+                {shouldShowField('sin_number', userRole) && (
+                  <div>
+                    <label htmlFor="sin_number" className="block text-sm font-medium text-slate-700 mb-1">
+                      Student ID
+                    </label>
+                    <input
+                      type="text"
+                      id="sin_number"
+                      name="sin_number"
+                      value={formData.sin_number}
+                      onChange={handleChange}
+                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      disabled
+                    />
+                  </div>
+                )}
+
+                {/* Year - Only for students */}
+                {shouldShowField('year', userRole) && (
+                  <div>
+                    <label htmlFor="year" className="block text-sm font-medium text-slate-700 mb-1">
+                      Year of Study
+                    </label>
+                    <input
+                      type="number"
+                      id="year"
+                      name="year"
+                      value={formData.year}
+                      onChange={handleChange}
+                      className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      disabled={!isFieldEditable('year', userRole)}
+                      min="1"
+                      max="6"
+                    />
+                  </div>
+                )}
+
+                {/* Batch - Only for students */}
+                {shouldShowField('batch', userRole) && (
+                  <div>
+                    <label htmlFor="batch" className="block text-sm font-medium text-slate-700 mb-1">
+                      Batch/Graduation Year
+                    </label>
+                    <input
+                      type="text"
+                      id="batch"
+                      name="batch"
+                      value={formData.batch}
+                      onChange={handleChange}
+                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      disabled
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-slate-50 rounded-lg p-5 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                  <div>
+                    <h3 className="text-xs font-medium uppercase text-slate-500">Full Name</h3>
+                    <p className="mt-1 text-base font-medium text-slate-900">{user.name || 'Not provided'}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xs font-medium uppercase text-slate-500">Email Address</h3>
+                    <p className="mt-1 text-base font-medium text-slate-900">{user.email || 'Not provided'}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xs font-medium uppercase text-slate-500">Phone Number</h3>
+                    <p className="mt-1 text-base font-medium text-slate-900">{user.phone || 'Not provided'}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xs font-medium uppercase text-slate-500">Role</h3>
+                    <p className="mt-1 text-base font-medium text-slate-900 capitalize">
+                      {(typeof user.role === 'object' ? user.role.name : user.role) || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  {shouldShowField('father_name', userRole) && (
+                    <div>
+                      <h3 className="text-xs font-medium uppercase text-slate-500">Father's Name</h3>
+                      <p className="mt-1 text-base font-medium text-slate-900">{user.father_name || 'Not provided'}</p>
+                    </div>
+                  )}
+                  
+                  {shouldShowField('sin_number', userRole) && (
+                    <div>
+                      <h3 className="text-xs font-medium uppercase text-slate-500">Student ID</h3>
+                      <p className="mt-1 text-base font-medium text-slate-900">{user.sin_number || 'Not provided'}</p>
+                    </div>
+                  )}
+                  
+                  {shouldShowField('year', userRole) && (
+                    <div>
+                      <h3 className="text-xs font-medium uppercase text-slate-500">Year of Study</h3>
+                      <p className="mt-1 text-base font-medium text-slate-900">{user.year ? `Year ${user.year}` : 'Not specified'}</p>
+                    </div>
+                  )}
+                  
+                  {shouldShowField('batch', userRole) && (
+                    <div>
+                      <h3 className="text-xs font-medium uppercase text-slate-500">Batch/Graduation Year</h3>
+                      <p className="mt-1 text-base font-medium text-slate-900">{user.batch || 'Not specified'}</p>
+                    </div>
+                  )}
+                </div>
               </div>
               
-              <div>
-                <h3 className="text-sm font-medium text-blue-600">Accommodation Status</h3>
-                <p className="mt-1 text-base font-medium text-gray-900">
-                  {user.dayScholarHosteller?.type || 'Not specified'}
-                </p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-blue-600">College</h3>
-                <p className="mt-1 text-base font-medium text-gray-900">
-                  {user.college?.name || 'Not specified'}
-                </p>
-                <p className="mt-1 text-sm text-blue-500">
-                  {user.college?.code || ''}
-                </p>
-                {user.college?.address && (
-                  <p className="mt-1 text-sm text-blue-400">
-                    {user.college.address}
-                  </p>
-                )}
-              </div>
+              {(shouldShowField('department', userRole) || 
+                shouldShowField('college', userRole) ||
+                shouldShowField('accommodation', userRole) ||
+                shouldShowField('quota', userRole)) && (
+                <div>
+                  <h3 className="text-lg font-medium text-slate-800 mb-4">Educational Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {shouldShowField('department', userRole) && (
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                        <h4 className="text-xs font-medium uppercase text-blue-700 mb-1">Department</h4>
+                        <p className="text-sm font-medium text-slate-900">{user.department?.name || 'Not specified'}</p>
+                        {user.department?.code && (
+                          <p className="mt-1 text-xs text-blue-600">{user.department.code}</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {shouldShowField('college', userRole) && userRole !== 'academic_director' && (
+                      <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+                        <h4 className="text-xs font-medium uppercase text-purple-700 mb-1">College</h4>
+                        <p className="text-sm font-medium text-slate-900">{user.college?.name || 'Not specified'}</p>
+                        {user.college?.code && (
+                          <p className="mt-1 text-xs text-purple-600">{user.college.code}</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {shouldShowField('accommodation', userRole) && (
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                        <h4 className="text-xs font-medium uppercase text-green-700 mb-1">Accommodation Status</h4>
+                        <p className="text-sm font-medium text-slate-900">{user.dayScholarHosteller?.type || 'Not specified'}</p>
+                      </div>
+                    )}
+                    
+                    {shouldShowField('quota', userRole) && (
+                      <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                        <h4 className="text-xs font-medium uppercase text-amber-700 mb-1">Quota</h4>
+                        <p className="text-sm font-medium text-slate-900">{user.quota?.name || 'Not specified'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
-              <div>
-                <h3 className="text-sm font-medium text-blue-600">Quota</h3>
-                <p className="mt-1 text-base font-medium text-gray-900">
-                  {user.quota?.name || 'Not specified'}
-                </p>
-                {user.quota?.description && (
-                  <p className="mt-1 text-sm text-blue-400">
-                    {user.quota.description}
+              <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-medium uppercase text-slate-500">Joined On</h3>
+                  <p className="mt-1 text-base font-medium text-slate-900">
+                    {new Date(user.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
                   </p>
-                )}
+                </div>
+                <div className="text-right">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    Active Member
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div className="border-t border-blue-200 pt-4">
-            <h3 className="text-sm font-medium text-blue-600">Joined On</h3>
-            <p className="mt-1 text-base font-medium text-gray-900">
-              {new Date(user.created_at).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </div>
