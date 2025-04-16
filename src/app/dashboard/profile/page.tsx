@@ -138,7 +138,7 @@ export default function ProfilePage() {
       case 'batch':
         return roleToLower === 'student';
       case 'department':
-        return ['student', 'staff', 'hod', 'academic_director'].includes(roleToLower);
+        return ['student', 'staff', 'hod'].includes(roleToLower);
       case 'college':
         return ['student', 'staff', 'hod', 'academic_director'].includes(roleToLower);
       case 'accommodation':

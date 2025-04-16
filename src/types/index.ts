@@ -103,6 +103,23 @@ export interface Equipment {
 }
 
 // Attendance types
+export enum WorkoutType {
+  CARDIO = 'cardio',
+  STRENGTH = 'strength',
+  FLEXIBILITY = 'flexibility',
+  MIXED = 'mixed',
+  OTHER = 'other'
+}
+
+export enum WorkoutCompletionStatus {
+  COMPLETED = 'completed',
+  PARTIAL = 'partial',
+  ABANDONED = 'abandoned'
+}
+
+// Alias for backward compatibility
+export type WorkoutStatus = WorkoutCompletionStatus;
+
 export interface Attendance {
   id: number;
   user_id: number;
@@ -114,10 +131,39 @@ export interface Attendance {
   created_at: string;
   updated_at: string;
   
-  userId?: number;      // Alternative for user_id
-  checkInTime?: string; // Alternative for check_in
-  checkOutTime?: string; // Alternative for check_out
-  isPresent?: boolean;  // Alternative for is_present
+  // Alternative naming conventions
+  userId?: number;      
+  checkInTime?: string; 
+  checkOutTime?: string;
+  isPresent?: boolean;  
+  
+  // New workout tracking fields
+  workoutType?: WorkoutType;
+  plannedDuration?: number;
+  actualDuration?: number;
+  isFirstVisit?: boolean;
+  completionStatus?: WorkoutCompletionStatus;
+  staffObservations?: string;
+  workoutIntensity?: number;
+}
+
+// Attendance statistics
+export interface AttendanceStatistics {
+  totalVisits: number;
+  uniqueUsers: number;
+  averageDuration: number;
+  workoutTypes: Record<string, number>;
+  peakHour: number;
+  hourDistribution: Record<number, number>;
+  weekdayDistribution: Record<number, number>;
+  completionStatusDistribution: Record<string, number>;
+  intensityDistribution: Record<number, number>;
+  visitFrequencyByUser: Record<number, number>;
+  returnRate: number;
+  dailyAverages: Record<string, number>;
+  firstTimeVisits: number;
+  averageIntensity: number;
+  weeklyTrends: Record<string, number>;
 }
 
 // Gym Post types

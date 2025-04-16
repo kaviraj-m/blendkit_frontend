@@ -1,4 +1,4 @@
-import { AuthResponse, LoginRequest, Equipment, GymPost, GymSchedule, Attendance, User } from '../types';
+import { AuthResponse, LoginRequest, Equipment, GymPost, GymSchedule, Attendance, User, AttendanceStatistics } from '../types';
 
 // The API_URL should be correctly set in the .env file or use this fallback
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -570,6 +570,122 @@ export const attendanceApi = {
       if (!directResponse.ok) {
         throw new Error(`Direct API call failed with status: ${directResponse.status}`);
       }
+    }
+  },
+  
+  getStatistics: async (token: string, startDate?: string, endDate?: string): Promise<AttendanceStatistics> => {
+    try {
+      let url = `${API_URL}/attendance/statistics`;
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (params.toString()) url += `?${params.toString()}`;
+      
+      console.log(`Fetching attendance statistics from: ${url}`);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching attendance statistics:', error);
+      
+      // Try direct API call as fallback
+      const directUrl = `http://localhost:3001/api/attendance/statistics${
+        startDate || endDate ? '?' + new URLSearchParams(
+          Object.entries({ startDate, endDate }).filter(([_, v]) => v !== undefined) as [string, string][]
+        ).toString() : ''
+      }`;
+      
+      const directResponse = await fetch(directUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!directResponse.ok) {
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
+    }
+  },
+  
+  getTodayAttendance: async (token: string): Promise<Attendance[]> => {
+    try {
+      const url = `${API_URL}/attendance/today`;
+      
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching today\'s attendance:', error);
+      
+      // Try direct API call as fallback
+      const directResponse = await fetch(`http://localhost:3001/api/attendance/today`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!directResponse.ok) {
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
+    }
+  },
+  
+  getCurrentAttendance: async (token: string): Promise<Attendance[]> => {
+    try {
+      const url = `${API_URL}/attendance/current`;
+      
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching current attendance:', error);
+      
+      // Try direct API call as fallback
+      const directResponse = await fetch(`http://localhost:3001/api/attendance/current`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!directResponse.ok) {
+        throw new Error(`Direct API call failed with status: ${directResponse.status}`);
+      }
+      
+      return await directResponse.json();
     }
   },
 };
