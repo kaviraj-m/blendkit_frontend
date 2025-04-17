@@ -41,6 +41,9 @@ export default function RedirectPage() {
         case 'executive_director':
           router.push('/dashboard/executive-director');
           break;
+        case 'hostel_warden':
+          router.push('/dashboard/warden');
+          break;
         default:
           router.push('/dashboard');
           break;

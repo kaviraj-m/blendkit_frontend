@@ -226,7 +226,7 @@ export default function StudentDashboard() {
                   <p className="text-gray-600">Need to leave campus? Submit a gate pass request for approval.</p>
                 </div>
                 <Link href="/dashboard/student/gate-pass" className="mt-4 md:mt-0 px-5 py-2 bg-amber-600 text-white rounded-md font-medium hover:bg-amber-700 transition-colors">
-                  New Request
+                  <span className="text-white">New Request</span>
                 </Link>
               </div>
               
@@ -271,7 +271,7 @@ export default function StudentDashboard() {
                   <p className="text-gray-600">Have an issue? Submit a complaint to the Executive Director.</p>
                 </div>
                 <Link href="/dashboard/student/complaint" className="mt-4 md:mt-0 px-5 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors">
-                  New Complaint
+                  <span className="text-white">New Complaint</span>
                 </Link>
               </div>
               
@@ -286,7 +286,7 @@ export default function StudentDashboard() {
                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <div className="text-sm font-medium">Submit</div>
+                    <div className="text-sm font-medium text-black">Submit</div>
                   </div>
                   <div className="text-center mb-3 sm:mb-0">
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-500 mb-2">
@@ -294,7 +294,7 @@ export default function StudentDashboard() {
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <div className="text-sm font-medium">Track</div>
+                    <div className="text-sm font-medium text-black">Track</div>
                   </div>
                   <div className="text-center">
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-500 mb-2">
@@ -302,7 +302,7 @@ export default function StudentDashboard() {
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <div className="text-sm font-medium">Resolve</div>
+                    <div className="text-sm font-medium text-black">Resolve</div>
                   </div>
                 </div>
               </div>
