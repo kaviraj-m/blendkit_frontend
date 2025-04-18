@@ -161,6 +161,14 @@ export default function GymStaffDashboard() {
             <div className="p-6 text-center">
               <h3 className="text-2xl font-semibold text-gray-800 mb-2">Workout Posts</h3>
               <p className="text-gray-600">Create and manage workout routines, fitness tips, and exercise guides for students</p>
+              <div className="mt-4">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create New Posts
+                </span>
+              </div>
             </div>
           </div>
         </Link>

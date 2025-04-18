@@ -254,7 +254,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
                       } transition-colors duration-200`}
                       aria-hidden="true"
                     />
-                    {item.name}
+                    <span className="text-white">{item.name}</span>
                   </Link>
                 );
               })}
@@ -350,7 +350,7 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
                         } transition-colors duration-200`}
                         aria-hidden="true"
                       />
-                      {item.name}
+                      <span className="text-white">{item.name}</span>
                     </Link>
                   );
                 })}

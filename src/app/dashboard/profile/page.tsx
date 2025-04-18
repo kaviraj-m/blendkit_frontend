@@ -91,7 +91,7 @@ export default function ProfilePage() {
 
     try {
       setSubmitting(true);
-      // Need to convert string values back to objects where needed
+      // Only include fields that are allowed to be updated directly
       const userData: Partial<User> = {
         name: formData.name,
         email: formData.email,
@@ -99,12 +99,12 @@ export default function ProfilePage() {
         father_name: formData.father_name,
         year: formData.year,
         batch: formData.batch,
-        // Keep the original references to nested objects
-        department: user?.department,
-        college: user?.college,
-        sin_number: formData.sin_number,
-        dayScholarHosteller: user?.dayScholarHosteller,
-        quota: user?.quota
+        sin_number: formData.sin_number
+        // Remove these properties to avoid validation errors:
+        // department: user?.department,
+        // college: user?.college,
+        // dayScholarHosteller: user?.dayScholarHosteller,
+        // quota: user?.quota
       };
 
       await userApi.updateProfile(userData, token);
@@ -156,11 +156,17 @@ export default function ProfilePage() {
     
     const roleToLower = role.toLowerCase();
     
-    if (roleToLower === 'student') {
-      return ['name', 'email', 'phone', 'year'].includes(fieldName);
+    // Only email and phone should be editable for all users
+    if (['email', 'phone'].includes(fieldName)) {
+      return true;
     }
     
-    return ['name', 'email', 'phone'].includes(fieldName);
+    // Year field is only editable for students
+    if (fieldName === 'year' && roleToLower === 'student') {
+      return true;
+    }
+    
+    return false;
   };
 
   if (loading) {
@@ -227,8 +233,8 @@ export default function ProfilePage() {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
-                    disabled={!isFieldEditable('name', userRole)}
+                    className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
+                    disabled={true}
                   />
                 </div>
 
@@ -243,7 +249,7 @@ export default function ProfilePage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
                     disabled={!isFieldEditable('email', userRole)}
                   />
                 </div>
@@ -259,7 +265,7 @@ export default function ProfilePage() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                    className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
                     disabled={!isFieldEditable('phone', userRole)}
                   />
                 </div>
@@ -276,7 +282,7 @@ export default function ProfilePage() {
                       name="father_name"
                       value={formData.father_name}
                       onChange={handleChange}
-                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
                       disabled
                     />
                   </div>
@@ -294,7 +300,7 @@ export default function ProfilePage() {
                       name="sin_number"
                       value={formData.sin_number}
                       onChange={handleChange}
-                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
                       disabled
                     />
                   </div>
@@ -312,7 +318,7 @@ export default function ProfilePage() {
                       name="year"
                       value={formData.year}
                       onChange={handleChange}
-                      className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
                       disabled={!isFieldEditable('year', userRole)}
                       min="1"
                       max="6"
@@ -332,7 +338,7 @@ export default function ProfilePage() {
                       name="batch"
                       value={formData.batch}
                       onChange={handleChange}
-                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5"
+                      className="block w-full rounded-md border-slate-300 bg-slate-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2.5 text-black"
                       disabled
                     />
                   </div>
