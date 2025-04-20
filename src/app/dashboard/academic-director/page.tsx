@@ -120,20 +120,20 @@ export default function AcademicDirectorDashboard() {
             <RiPassPendingLine className="mr-2" />
             Gate Pass Management
           </h2>
-          <p className="text-blue-100">Review and approve student gate passes</p>
+          <p className="text-blue-100">Review and approve gate passes by requester type</p>
         </div>
         <div className="p-6">
           <div className="space-y-4">
             <Link 
-              href="/dashboard/academic-director/gate-pass"
+              href="/dashboard/academic-director/gate-pass-by-type"
               className="flex items-center p-5 border border-gray-200 rounded-lg hover:bg-blue-50 transition-all duration-300 hover:shadow-md"
             >
               <div className="rounded-lg bg-blue-100 p-3 mr-4 shadow">
                 <RiPassPendingLine className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-800">Gate Pass Approvals</h3>
-                <p className="text-sm text-gray-600">Review and approve student gate pass requests</p>
+                <h3 className="font-semibold text-gray-800">Gate Pass Approvals By Type</h3>
+                <p className="text-sm text-gray-600">Manage student, staff and HOD gate pass requests separately</p>
               </div>
             </Link>
           </div>
@@ -146,10 +146,11 @@ export default function AcademicDirectorDashboard() {
               <div>
                 <h3 className="font-semibold text-blue-800 mb-2">Gate Pass Approval Process</h3>
                 <ul className="text-sm text-blue-700 list-disc list-inside space-y-1.5">
-                  <li>Review student details and request reason</li>
+                  <li>Filter requests by student, staff, or HOD</li>
+                  <li>Review request details and reason</li>
                   <li>Verify request validity and duration</li>
                   <li>Approve or reject with comments if needed</li>
-                  <li>Student will be notified of your decision</li>
+                  <li>Requesters will be notified of your decision</li>
                 </ul>
               </div>
             </div>

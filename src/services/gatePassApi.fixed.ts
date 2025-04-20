@@ -117,11 +117,11 @@ export interface UpdateGatePassBySecurityDto {
 // Create authorized axios instance
 const createAuthorizedAxios = (token: string) => {
   return axios.create({
-    baseURL: 'http://localhost:3001/api/api/gate-passes',
+    baseURL: `${API_URL}/api/gate-passes`,
     headers: {
-      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-    },
+      'Authorization': `Bearer ${token}`
+    }
   });
 };
 

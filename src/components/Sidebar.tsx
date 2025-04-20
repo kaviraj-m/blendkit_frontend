@@ -12,8 +12,8 @@ interface IconProps {
 
 // Icons for sidebar navigation
 const HomeIcon = ({ className = '' }: IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
   </svg>
 );
 
@@ -66,8 +66,20 @@ const StaffIcon = ({ className = '' }: IconProps) => (
 );
 
 const MessageIcon = ({ className = '' }: IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+  </svg>
+);
+
+const PassIcon = ({ className = '' }: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 4v12l-4-2-4 2V4M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+const SocialIcon = ({ className = '' }: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
   </svg>
 );
 
@@ -86,6 +98,22 @@ const studentNavigation: SidebarItem[] = [
   { name: 'Workout Posts', href: '/dashboard/gym-posts', icon: DocumentIcon },
   { name: 'Equipment', href: '/dashboard/equipment', icon: GymIcon },
   { name: 'Complaints', href: '/dashboard/student/complaint', icon: MessageIcon },
+  { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
+];
+
+// Staff navigation
+const staffNavigation: SidebarItem[] = [
+  { name: 'Dashboard', href: '/dashboard/staff', icon: HomeIcon },
+  { name: 'Gate Pass Approval', href: '/dashboard/staff/gate-pass', icon: DocumentIcon },
+  { name: 'Apply for Gate Pass', href: '/dashboard/staff/gate-pass/apply', icon: PassIcon },
+  { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
+];
+
+// HOD navigation
+const hodNavigation: SidebarItem[] = [
+  { name: 'Dashboard', href: '/dashboard/hod', icon: HomeIcon },
+  { name: 'Gate Pass Approvals', href: '/dashboard/hod/gate-pass', icon: PassIcon, color: 'text-amber-400' },
+  { name: 'Manage Your Gate Passes', href: '/dashboard/hod/manage-gate-pass', icon: DocumentIcon, color: 'text-amber-400' },
   { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
 ];
 
@@ -109,7 +137,7 @@ const executiveDirectorNavigation: SidebarItem[] = [
 
 const academicDirectorNavigation: SidebarItem[] = [
   { name: 'Dashboard', href: '/dashboard/academic-director', icon: HomeIcon },
-  { name: 'Gate Pass Approvals', href: '/dashboard/academic-director/gate-pass', icon: DocumentIcon },
+  { name: 'Gate Pass Approvals', href: '/dashboard/academic-director/gate-pass-by-type', icon: DocumentIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: ProfileIcon },
 ];
 
@@ -192,6 +220,8 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
     
     if (roleName === 'student') {
       setNavItems(studentNavigation);
+    } else if (roleName === 'staff') {
+      setNavItems(staffNavigation);
     } else if (roleName === 'gym_staff') {
       setNavItems(gymStaffNavigation);
     } else if (roleName === 'executive_director') {
@@ -202,6 +232,8 @@ export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }: SidebarPr
       setNavItems(securityNavigation);
     } else if (roleName === 'warden') {
       setNavItems(wardenNavigation);
+    } else if (roleName === 'hod') {
+      setNavItems(hodNavigation);
     } else {
       // Default navigation
       setNavItems([

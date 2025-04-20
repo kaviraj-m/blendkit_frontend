@@ -1,5 +1,38 @@
 'use client';
 
+// Types extension for GatePass
+declare module '@/services/gatePassApi' {
+  interface GatePass {
+    student?: {
+      id: number;
+      sin_number?: string;
+      name?: string;
+      email?: string;
+      father_name?: string;
+      year?: number;
+      batch?: string;
+      phone?: string;
+      parent_number?: string;
+    };
+    requester?: {
+      id: number;
+      sin_number?: string;
+      name?: string;
+      email?: string;
+      father_name?: string;
+      year?: number;
+      batch?: string;
+      phone?: string;
+      parent_number?: string;
+    };
+    department?: {
+      id: number;
+      name?: string;
+      code?: string;
+    };
+  }
+}
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +43,9 @@ import {
   GatePassStatus, 
   GatePassType, 
   UpdateGatePassStatusByStaffDto, 
-  gatePassApi 
+  gatePassApi,
+  CreateStaffGatePassDto,
+  RequesterType
 } from '@/services/gatePassApi';
 
 export default function StaffGatePassPage() {
@@ -22,6 +57,15 @@ export default function StaffGatePassPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [remarks, setRemarks] = useState('');
+  const [formData, setFormData] = useState({
+    type: GatePassType.OFFICIAL,
+    reason: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('pending');
   
   // Fetch pending gate passes
   useEffect(() => {
@@ -122,14 +166,54 @@ export default function StaffGatePassPage() {
     }
   };
   
-  const formatGatePassType = (type: GatePassType): string => {
-    if (!type) return 'Unknown';
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { type, reason, description, startDate, endDate } = formData;
     
+    if (startDate > endDate) {
+      toast.error('End date must be after start date');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      if (token) {
+        const gatePassData: CreateStaffGatePassDto = {
+          type: type,
+          reason: reason,
+          description: description,
+          start_date: startDate,
+          end_date: endDate,
+          requester_type: RequesterType.STAFF
+        };
+        
+        await gatePassApi.create(token, gatePassData);
+        
+        toast.success('Gate pass request submitted successfully');
+        setFormData({
+          type: GatePassType.OFFICIAL,
+          reason: '',
+          description: '',
+          startDate: '',
+          endDate: '',
+        });
+        fetchPendingGatePasses();
+        setActiveTab('pending');
+      }
+    } catch (error) {
+      console.error('Error creating gate pass:', error);
+      toast.error('Failed to submit gate pass request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const formatGatePassType = (type: GatePassType): string => {
     switch (type) {
+      case GatePassType.OFFICIAL:
+        return 'Official Duty';
       case GatePassType.LEAVE:
         return 'Leave';
-      case GatePassType.HOME_VISIT:
-        return 'Home Visit';
       case GatePassType.EMERGENCY:
         return 'Emergency';
       case GatePassType.OTHER:
@@ -149,6 +233,19 @@ export default function StaffGatePassPage() {
     }
   };
   
+  const getStatusBadge = (status: GatePassStatus) => {
+    switch (status) {
+      case GatePassStatus.APPROVED:
+        return 'bg-green-100 text-green-800';
+      case GatePassStatus.REJECTED:
+        return 'bg-red-100 text-red-800';
+      case GatePassStatus.PENDING_HOD:
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
   if (isLoading || loading) {
     return (
       <div className="flex flex-col justify-center items-center h-64">
@@ -161,8 +258,8 @@ export default function StaffGatePassPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="mb-8 bg-gradient-to-r from-amber-600 to-amber-800 rounded-lg shadow-lg p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">Gate Pass Approvals</h1>
-        <p className="text-amber-100">
+        <h1 className="text-3xl font-bold mb-2 text-white">Gate Pass Approvals</h1>
+        <p className="text-white text-lg font-medium">
           Review and manage student gate pass requests for your department
         </p>
       </div>
@@ -193,7 +290,7 @@ export default function StaffGatePassPage() {
                     }`}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="font-medium text-gray-900">{gatePass.student?.name || `Student #${gatePass.student_id}`}</span>
+                      <span className="font-medium text-gray-900">{gatePass.student_id ? `Student #${gatePass.student_id}` : "Student"}</span>
                       <span className="px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800">
                         {formatGatePassType(gatePass.type)}
                       </span>
@@ -221,7 +318,7 @@ export default function StaffGatePassPage() {
                   <div>
                     <span className="block text-sm text-gray-600">Student</span>
                     <span className="font-medium text-lg text-gray-900">
-                      {selectedGatePass.student?.name || `Student #${selectedGatePass.student_id}`}
+                      {selectedGatePass.student?.name || selectedGatePass.requester?.name || `Student #${selectedGatePass.student_id}`}
                     </span>
                   </div>
                   <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
@@ -232,7 +329,57 @@ export default function StaffGatePassPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <h3 className="font-medium text-gray-800 mb-2">Request Details</h3>
+                  <h3 className="font-medium text-gray-800 mb-3">Student Information</h3>
+                  
+                  <div className="space-y-2 bg-gray-50 p-4 rounded-md">
+                    <div>
+                      <span className="block text-xs text-gray-600">Registration Number</span>
+                      <span className="font-medium text-gray-900">{selectedGatePass.student?.sin_number || selectedGatePass.requester?.sin_number || 'N/A'}</span>
+                    </div>
+                    
+                    <div>
+                      <span className="block text-xs text-gray-600">Father's Name</span>
+                      <span className="font-medium text-gray-900">{selectedGatePass.student?.father_name || selectedGatePass.requester?.father_name || 'N/A'}</span>
+                    </div>
+                    
+                    <div>
+                      <span className="block text-xs text-gray-600">Year / Batch</span>
+                      <span className="font-medium text-gray-900">
+                        {(selectedGatePass.student?.year || selectedGatePass.requester?.year) ? 
+                          `Year ${selectedGatePass.student?.year || selectedGatePass.requester?.year} (${selectedGatePass.student?.batch || selectedGatePass.requester?.batch})` : 
+                          'N/A'}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <span className="block text-xs text-gray-600">Phone Number</span>
+                      <span className="font-medium text-gray-900">{selectedGatePass.student?.phone || selectedGatePass.requester?.phone || 'N/A'}</span>
+                    </div>
+                    
+                    <div>
+                      <span className="block text-xs text-gray-600">Parent Contact</span>
+                      <span className="font-medium text-gray-900">{selectedGatePass.student?.parent_number || selectedGatePass.requester?.parent_number || 'N/A'}</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-medium text-gray-800 mt-4 mb-3">Department</h3>
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <div className="space-y-2">
+                      <div>
+                        <span className="block text-xs text-gray-600">Department Name</span>
+                        <span className="font-medium text-gray-900">{selectedGatePass.department?.name || 'N/A'}</span>
+                      </div>
+                      
+                      <div>
+                        <span className="block text-xs text-gray-600">Department Code</span>
+                        <span className="font-medium text-gray-900">{selectedGatePass.department?.code || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-medium text-gray-800 mb-3">Request Details</h3>
                   
                   <div className="space-y-3">
                     <div>
@@ -247,10 +394,8 @@ export default function StaffGatePassPage() {
                       </p>
                     </div>
                   </div>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium text-gray-800 mb-2">Time Period</h3>
+                  
+                  <h3 className="font-medium text-gray-800 mt-4 mb-3">Time Period</h3>
                   
                   <div className="space-y-3">
                     <div>

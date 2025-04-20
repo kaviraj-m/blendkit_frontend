@@ -4,16 +4,27 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { gatePassApi } from '@/services/gatePassApi';
+import { gatePassApi, RequesterType } from '@/services/gatePassApi';
 
 interface GatePass {
   id: number;
-  student: {
+  student?: {
     id: number;
     name: string;
     email: string;
-    rollNumber?: string;
+    sin_number?: string;
+    year?: number;
+    batch?: string;
   };
+  requester?: {
+    id: number;
+    name: string;
+    email: string;
+    sin_number?: string;
+    year?: number;
+    batch?: string;
+  };
+  requester_type?: string;
   reason: string;
   departureDate: string;
   returnDate: string;
@@ -30,13 +41,52 @@ interface GatePass {
   updatedAt: string;
 }
 
+// Simple Tabs Components - since @/components/ui/tabs doesn't exist
+const TabsList = ({ className, children }: { className: string, children: React.ReactNode }) => (
+  <div className={`flex rounded-lg bg-gray-100 p-1 ${className}`}>{children}</div>
+);
+
+const TabsTrigger = ({ value, className, children, active, onClick }: { value: string, className: string, children: React.ReactNode, active: boolean, onClick: () => void }) => (
+  <button 
+    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${active ? 'bg-white shadow' : 'text-gray-700 hover:bg-gray-200/60'} ${className}`}
+    onClick={onClick}
+  >
+    {children}
+  </button>
+);
+
+const TabsContent = ({ value, activeValue, children }: { value: string, activeValue: string, children: React.ReactNode }) => (
+  <div className={value === activeValue ? 'block' : 'hidden'}>
+    {children}
+  </div>
+);
+
+const Tabs = ({ defaultValue, value, onValueChange, children }: { defaultValue: string, value: string, onValueChange: (value: string) => void, children: React.ReactNode }) => {
+  const activeValue = value || defaultValue;
+  return (
+    <div className="w-full">
+      {React.Children.map(children, child => {
+        if (React.isValidElement(child) && child.type === TabsList) {
+          return React.cloneElement(child);
+        }
+        if (React.isValidElement(child) && child.type === TabsContent) {
+          return React.cloneElement(child as React.ReactElement<any>, { activeValue } as any);
+        }
+        return child;
+      })}
+    </div>
+  );
+};
+
 export default function HodGatePassApprovalPage() {
   const router = useRouter();
   const { user, isLoading, token } = useAuth();
-  const [gatePasses, setGatePasses] = useState<GatePass[]>([]);
+  const [studentGatePasses, setStudentGatePasses] = useState<GatePass[]>([]);
+  const [staffGatePasses, setStaffGatePasses] = useState<GatePass[]>([]);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState<{ [key: number]: string }>({});
   const [actionLoading, setActionLoading] = useState<{ [key: number]: string }>({});
+  const [activeTab, setActiveTab] = useState('students');
 
   useEffect(() => {
     if (!isLoading) {
@@ -61,10 +111,28 @@ export default function HodGatePassApprovalPage() {
     try {
       if (token) {
         const response = await gatePassApi.getHodPendingApproval(token);
-        // Convert response to match the GatePass interface if needed
+        console.log('API Response:', response);
+        
+        // Process the response and filter by requester type
         const formattedResponse = response.map((pass: any) => ({
           id: pass.id,
-          student: pass.student || { id: pass.student_id, name: 'Unknown Student', email: '' },
+          student: pass.student || (pass.requester_type === RequesterType.STUDENT ? { 
+            id: pass.requester_id, 
+            name: pass.requester?.name || 'Unknown Student', 
+            email: pass.requester?.email || '',
+            sin_number: pass.requester?.sin_number || '',
+            year: pass.requester?.year || null,
+            batch: pass.requester?.batch || ''
+          } : undefined),
+          requester: pass.requester || { 
+            id: pass.requester_id, 
+            name: 'Unknown User', 
+            email: '', 
+            sin_number: pass.requester?.sin_number || '',
+            year: pass.requester?.year || null,
+            batch: pass.requester?.batch || ''
+          },
+          requester_type: pass.requester_type,
           reason: pass.reason || '',
           departureDate: pass.start_date || '',
           returnDate: pass.end_date || '',
@@ -80,7 +148,18 @@ export default function HodGatePassApprovalPage() {
           createdAt: pass.created_at || new Date().toISOString(),
           updatedAt: pass.updated_at || new Date().toISOString()
         }));
-        setGatePasses(formattedResponse);
+        
+        // Filter passes by requester type
+        const studentPasses = formattedResponse.filter(pass => 
+          pass.requester_type === RequesterType.STUDENT || pass.requester_type === 'student'
+        );
+        
+        const staffPasses = formattedResponse.filter(pass => 
+          pass.requester_type === RequesterType.STAFF || pass.requester_type === 'staff'
+        );
+        
+        setStudentGatePasses(studentPasses);
+        setStaffGatePasses(staffPasses);
       }
     } catch (error) {
       console.error('Error fetching pending gate passes:', error);
@@ -90,7 +169,7 @@ export default function HodGatePassApprovalPage() {
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (id: number, type: 'student' | 'staff') => {
     setActionLoading({ ...actionLoading, [id]: 'approve' });
     try {
       await gatePassApi.hodApprove(token!, id, { 
@@ -98,7 +177,14 @@ export default function HodGatePassApprovalPage() {
         comments: comment[id] || 'Approved by HOD' 
       });
       toast.success('Gate pass approved successfully');
-      setGatePasses(gatePasses.filter(pass => pass.id !== id));
+      
+      // Remove the approved gate pass from the respective list
+      if (type === 'student') {
+        setStudentGatePasses(studentGatePasses.filter(pass => pass.id !== id));
+      } else {
+        setStaffGatePasses(staffGatePasses.filter(pass => pass.id !== id));
+      }
+      
       setComment({ ...comment, [id]: '' });
     } catch (error) {
       console.error('Error approving gate pass:', error);
@@ -108,7 +194,7 @@ export default function HodGatePassApprovalPage() {
     }
   };
 
-  const handleReject = async (id: number) => {
+  const handleReject = async (id: number, type: 'student' | 'staff') => {
     if (!comment[id]) {
       toast.error('Please provide a reason for rejection');
       return;
@@ -121,7 +207,14 @@ export default function HodGatePassApprovalPage() {
         comments: comment[id] 
       });
       toast.success('Gate pass rejected');
-      setGatePasses(gatePasses.filter(pass => pass.id !== id));
+      
+      // Remove the rejected gate pass from the respective list
+      if (type === 'student') {
+        setStudentGatePasses(studentGatePasses.filter(pass => pass.id !== id));
+      } else {
+        setStaffGatePasses(staffGatePasses.filter(pass => pass.id !== id));
+      }
+      
       setComment({ ...comment, [id]: '' });
     } catch (error) {
       console.error('Error rejecting gate pass:', error);
@@ -141,6 +234,111 @@ export default function HodGatePassApprovalPage() {
     });
   };
 
+  // Render a gate pass card - reusable for both student and staff
+  const renderGatePassCard = (gatePass: GatePass, type: 'student' | 'staff') => (
+    <div key={gatePass.id} className={`rounded-lg shadow overflow-hidden ${type === 'student' ? 'border-l-4 border-amber-500' : 'border-l-4 border-purple-500'}`}>
+      <div className={`px-6 py-4 border-b border-gray-200 ${type === 'student' ? 'bg-amber-50' : 'bg-purple-50'} flex justify-between items-center`}>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Gate Pass #{gatePass.id}
+          </h3>
+          <p className="text-sm text-gray-700">
+            Submitted on {formatDate(gatePass.createdAt)}
+          </p>
+        </div>
+        <div className={`px-3 py-1 rounded-full ${type === 'student' ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-purple-100 text-purple-800 font-bold'} text-sm`}>
+          {type === 'student' ? 'Student Gate Pass' : 'Staff Gate Pass'}
+        </div>
+      </div>
+      
+      <div className="p-6 bg-white">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className={`p-4 rounded-lg ${type === 'student' ? 'bg-amber-50' : 'bg-purple-50'}`}>
+            <h4 className="text-sm font-medium text-gray-700 mb-3">{type === 'student' ? 'Student Information' : 'Staff Information'}</h4>
+            <p className="font-medium text-gray-900 text-lg">{type === 'student' ? gatePass.student?.name : gatePass.requester?.name}</p>
+            
+            {type === 'student' && (
+              <>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="bg-white p-2 rounded border border-amber-200">
+                    <p className="text-xs text-gray-500">SIN Number</p>
+                    <p className="font-medium text-gray-900">{gatePass.student?.sin_number || 'N/A'}</p>
+                  </div>
+                  <div className="bg-white p-2 rounded border border-amber-200">
+                    <p className="text-xs text-gray-500">Year</p>
+                    <p className="font-medium text-gray-900">{gatePass.student?.year || 'N/A'}</p>
+                  </div>
+                </div>
+                {gatePass.student?.batch && (
+                  <div className="mt-2 bg-white p-2 rounded border border-amber-200">
+                    <p className="text-xs text-gray-500">Batch</p>
+                    <p className="font-medium text-gray-900">{gatePass.student?.batch}</p>
+                  </div>
+                )}
+              </>
+            )}
+            
+            <p className="mt-2 text-gray-800">{type === 'student' ? gatePass.student?.email : gatePass.requester?.email}</p>
+          </div>
+          
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Request Details</h4>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-white p-3 rounded border border-gray-200">
+                <p className="text-xs text-gray-500">Departure</p>
+                <p className="font-medium text-gray-900">{formatDate(gatePass.departureDate)}</p>
+              </div>
+              <div className="bg-white p-3 rounded border border-gray-200">
+                <p className="text-xs text-gray-500">Return</p>
+                <p className="font-medium text-gray-900">{formatDate(gatePass.returnDate)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Reason for Leave</h4>
+          <p className="text-gray-800 bg-white p-3 rounded border border-gray-200">{gatePass.reason}</p>
+        </div>
+        
+        {gatePass.staffComments && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-700 mb-2">Staff Comments</h4>
+            <p className="text-gray-800 bg-white p-3 rounded border border-blue-200">{gatePass.staffComments}</p>
+          </div>
+        )}
+        
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Your Comments</h4>
+          <textarea
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows={3}
+            placeholder="Add your comments here (required for rejection)"
+            value={comment[gatePass.id] || ''}
+            onChange={(e) => setComment({ ...comment, [gatePass.id]: e.target.value })}
+          ></textarea>
+        </div>
+        
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={() => handleReject(gatePass.id, type)}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+            disabled={actionLoading[gatePass.id] === 'reject'}
+          >
+            {actionLoading[gatePass.id] === 'reject' ? 'Rejecting...' : 'Reject'}
+          </button>
+          <button
+            onClick={() => handleApprove(gatePass.id, type)}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+            disabled={actionLoading[gatePass.id] === 'approve'}
+          >
+            {actionLoading[gatePass.id] === 'approve' ? 'Approving...' : 'Approve'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (isLoading || loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen">
@@ -152,104 +350,73 @@ export default function HodGatePassApprovalPage() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gate Pass Approval</h1>
-        <p className="text-gray-800">Review and manage gate pass requests that require HOD approval</p>
+      <div className="mb-6 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 text-white">
+        <h1 className="text-2xl font-bold mb-2">Gate Pass Approval</h1>
+        <p className="text-blue-100">
+          Review and manage gate pass requests that require HOD approval
+        </p>
       </div>
 
-      {gatePasses.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Pending Requests</h2>
-          <p className="text-gray-800">There are no gate pass requests waiting for your approval at this time.</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {gatePasses.map((gatePass) => (
-            <div key={gatePass.id} className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Gate Pass #{gatePass.id}
-                  </h3>
-                  <p className="text-sm text-gray-700">
-                    Submitted on {formatDate(gatePass.createdAt)}
-                  </p>
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <Tabs defaultValue="students" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger 
+              value="students" 
+              className="relative" 
+              active={activeTab === 'students'} 
+              onClick={() => setActiveTab('students')}
+            >
+              <span className={`text-base font-semibold ${activeTab === 'students' ? 'text-amber-700' : 'text-gray-700'}`}>Students</span>
+              {studentGatePasses.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-[10px] font-bold text-white">
+                  {studentGatePasses.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="staff" 
+              className="relative" 
+              active={activeTab === 'staff'} 
+              onClick={() => setActiveTab('staff')}
+            >
+              <span className={`text-base font-semibold ${activeTab === 'staff' ? 'text-purple-700' : 'text-gray-700'}`}>Staff</span>
+              {staffGatePasses.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-[10px] font-bold text-white">
+                  {staffGatePasses.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="mt-4">
+            <TabsContent value="students" activeValue={activeTab}>
+              {studentGatePasses.length === 0 ? (
+                <div className="bg-amber-50 rounded-lg p-6 text-center border border-amber-200">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">No Pending Student Requests</h2>
+                  <p className="text-gray-800">There are no student gate pass requests waiting for your approval at this time.</p>
                 </div>
-                <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-medium">
-                  Pending HOD Approval
+              ) : (
+                <div className="space-y-6">
+                  {studentGatePasses.map(gatePass => renderGatePassCard(gatePass, 'student'))}
                 </div>
-              </div>
-              
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Student Information</h4>
-                    <p className="font-medium text-gray-900">{gatePass.student.name}</p>
-                    <p className="text-gray-800">{gatePass.student.email}</p>
-                    {gatePass.student.rollNumber && (
-                      <p className="text-gray-800">Roll #: {gatePass.student.rollNumber}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Request Details</h4>
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="text-sm text-gray-700">Departure:</p>
-                        <p className="font-medium text-gray-900">{formatDate(gatePass.departureDate)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-700">Return:</p>
-                        <p className="font-medium text-gray-900">{formatDate(gatePass.returnDate)}</p>
-                      </div>
-                    </div>
-                  </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="staff" activeValue={activeTab}>
+              {staffGatePasses.length === 0 ? (
+                <div className="bg-purple-50 rounded-lg p-6 text-center border border-purple-200">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">No Pending Staff Requests</h2>
+                  <p className="text-gray-800">There are no staff gate pass requests waiting for your approval at this time.</p>
                 </div>
-                
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Reason for Leave</h4>
-                  <p className="text-gray-800 bg-gray-50 p-3 rounded">{gatePass.reason}</p>
+              ) : (
+                <div className="space-y-6">
+                  {staffGatePasses.map(gatePass => renderGatePassCard(gatePass, 'staff'))}
                 </div>
-                
-                {gatePass.staffComments && (
-                  <div className="mb-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Staff Comments</h4>
-                    <p className="text-gray-800 bg-green-50 p-3 rounded">{gatePass.staffComments}</p>
-                  </div>
-                )}
-                
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Your Comments</h4>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    rows={3}
-                    placeholder="Add your comments here (required for rejection)"
-                    value={comment[gatePass.id] || ''}
-                    onChange={(e) => setComment({ ...comment, [gatePass.id]: e.target.value })}
-                  />
-                </div>
-                
-                <div className="flex justify-end space-x-4">
-                  <button
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
-                    onClick={() => handleReject(gatePass.id)}
-                    disabled={actionLoading[gatePass.id] === 'reject'}
-                  >
-                    {actionLoading[gatePass.id] === 'reject' ? 'Rejecting...' : 'Reject'}
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-                    onClick={() => handleApprove(gatePass.id)}
-                    disabled={actionLoading[gatePass.id] === 'approve'}
-                  >
-                    {actionLoading[gatePass.id] === 'approve' ? 'Approving...' : 'Approve'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              )}
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
     </>
   );
-} 
+}

@@ -18,7 +18,9 @@ import {
   RiCalendarEventLine,
   RiUserFollowLine,
   RiArticleLine,
-  RiToolsFill
+  RiToolsFill,
+  RiCheckLine,
+  RiFileTextLine
 } from 'react-icons/ri';
 import axios from 'axios';
 
@@ -187,29 +189,48 @@ export default function StaffDashboard() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Gate Pass Management */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-amber-100">
-          <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-6">
-            <h2 className="text-2xl font-bold text-white">Gate Pass Management</h2>
-            <p className="text-amber-100">Review and manage student gate pass requests</p>
+        <div className="col-span-1 xl:col-span-2 bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="p-5 bg-gradient-to-r from-blue-600 to-blue-800">
+            <h3 className="text-xl font-bold text-white">Gate Pass Management</h3>
+            <p className="text-white mt-1">Manage leave and emergency pass requests</p>
           </div>
-          <div className="p-6">
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Pending Approvals</h3>
-                <span className="bg-amber-100 text-amber-800 px-4 py-1 rounded-full text-sm font-medium">
-                  {isLoadingGatePasses ? '...' : pendingGatePasses} requests
-                </span>
+          <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Manage Gate Passes</h3>
+                    <p className="text-gray-700 mt-1">Review and approve student gate pass requests</p>
+                  </div>
+                  <div className="bg-blue-100 text-blue-800 p-2 rounded-full">
+                    <RiCheckLine className="h-5 w-5" />
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push('/dashboard/staff/gate-pass')}
+                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg w-full transition-colors"
+                >
+                  View Requests
+                </button>
               </div>
-              <p className="text-gray-600 mb-6">
-                Review and approve student gate pass requests. Ensure proper documentation and timing.
-              </p>
-              <Link 
-                href="/dashboard/staff/gate-pass"
-                className="inline-flex items-center px-6 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium shadow-md hover:shadow-lg"
-              >
-                <RiPassPendingLine className="mr-2" />
-                Manage Gate Passes
-              </Link>
+              
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-5 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Apply for Gate Pass</h3>
+                    <p className="text-gray-700 mt-1">Submit your own gate pass requests</p>
+                  </div>
+                  <div className="bg-green-100 text-green-800 p-2 rounded-full">
+                    <RiFileTextLine className="h-5 w-5" />
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push('/dashboard/staff/gate-pass/apply')}
+                  className="mt-4 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg w-full transition-colors"
+                >
+                  Apply Now
+                </button>
+              </div>
             </div>
           </div>
         </div>

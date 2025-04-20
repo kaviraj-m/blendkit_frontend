@@ -4,19 +4,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/utils/rbac';
-import { ShieldCheck, ClipboardCheck, UserCheck, Calendar, AlertTriangle, X, CheckCircle, Search } from 'lucide-react';
+import { ShieldCheck, ClipboardCheck, UserCheck, Calendar, AlertTriangle, X, CheckCircle, Search, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { gatePassApi, UpdateGatePassBySecurityDto } from '@/services/gatePassApi';
 
 // Define proper GatePass interface matching what comes from API
 interface GatePass {
   id: number;
-  student: {
+  student?: {
     id: number;
     sin_number: string;
     name: string;
     email: string;
   };
+  requester?: {
+    id: number;
+    sin_number: string;
+    name: string;
+    email: string;
+  };
+  requester_id?: number;
+  requester_type?: string;
   department: {
     id: number;
     name: string;
@@ -150,7 +158,15 @@ export default function SecurityDashboard() {
           } else {
             // Default to 'approved' tab
             console.log('Fetching approved gate passes');
-            response = await gatePassApi.getForSecurityVerification(token);
+            // First try the for-security-verification endpoint
+            try {
+              response = await gatePassApi.getForSecurityVerification(token);
+            } catch (verificationError) {
+              console.error('Error with primary endpoint, trying security-pending with approval filter:', verificationError);
+              // If that fails, fall back to filtering security-pending results
+              let pendingResponse = await gatePassApi.getSecurityPending(token);
+              response = pendingResponse.filter(pass => pass.status.toLowerCase() === 'approved');
+            }
           }
           
           console.log(`API Response for ${activeTab} tab:`, response);
@@ -357,7 +373,13 @@ export default function SecurityDashboard() {
 
   const openVerifyModal = (gatePass: GatePass) => {
     setSelectedGatePass(gatePass);
-    setSecurityComment(`Student ${gatePass.student.name} (${gatePass.student.sin_number}) is leaving campus at ${new Date().toLocaleTimeString()}`);
+    
+    // Determine requester name and ID
+    const requesterName = gatePass.requester?.name || gatePass.student?.name || 'Unknown';
+    const requesterID = gatePass.requester?.sin_number || gatePass.student?.sin_number || 'Unknown';
+    const requesterType = gatePass.requester_type || 'student';
+    
+    setSecurityComment(`${requesterType.charAt(0).toUpperCase() + requesterType.slice(1)} ${requesterName} (${requesterID}) is leaving campus at ${new Date().toLocaleTimeString()}`);
     setIsVerifyModalOpen(true);
   };
 
@@ -442,14 +464,19 @@ export default function SecurityDashboard() {
     // Filter by search query if present
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(pass => 
-        pass.student.name.toLowerCase().includes(query) ||
-        (pass.student.sin_number && pass.student.sin_number.toLowerCase().includes(query)) ||
-        (pass.department?.name && pass.department.name.toLowerCase().includes(query)) ||
-        pass.id.toString().includes(query) ||
-        pass.reason.toLowerCase().includes(query) ||
-        pass.status.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(pass => {
+        // Get requester information from either requester or student field
+        const requesterName = pass.requester?.name || pass.student?.name || '';
+        const requesterSin = pass.requester?.sin_number || pass.student?.sin_number || '';
+        const departmentName = pass.department?.name || '';
+        
+        return requesterName.toLowerCase().includes(query) ||
+          requesterSin.toLowerCase().includes(query) ||
+          departmentName.toLowerCase().includes(query) ||
+          pass.id.toString().includes(query) ||
+          pass.reason.toLowerCase().includes(query) ||
+          pass.status.toLowerCase().includes(query);
+      });
     }
     
     return filtered;
@@ -505,8 +532,9 @@ export default function SecurityDashboard() {
           <thead className="bg-gray-100">
             <tr>
               <th className="py-3 px-4 text-left font-semibold text-gray-800">ID</th>
-              <th className="py-3 px-4 text-left font-semibold text-gray-800">Student</th>
-              <th className="py-3 px-4 text-left font-semibold text-gray-800">SIN Number</th>
+              <th className="py-3 px-4 text-left font-semibold text-gray-800">Requester</th>
+              <th className="py-3 px-4 text-left font-semibold text-gray-800">ID Number</th>
+              <th className="py-3 px-4 text-left font-semibold text-gray-800">Type</th>
               <th className="py-3 px-4 text-left font-semibold text-gray-800">Department</th>
               <th className="py-3 px-4 text-left font-semibold text-gray-800">Purpose</th>
               <th className="py-3 px-4 text-left font-semibold text-gray-800">Valid From</th>
@@ -516,67 +544,82 @@ export default function SecurityDashboard() {
             </tr>
           </thead>
           <tbody>
-            {filteredPasses.map((pass) => (
-              <tr key={pass.id} className="border-b hover:bg-gray-50">
-                <td className="py-3 px-4 font-medium text-gray-900">{pass.id}</td>
-                <td className="py-3 px-4 font-medium text-gray-900">{pass.student.name}</td>
-                <td className="py-3 px-4 text-gray-700">{pass.student.sin_number || 'N/A'}</td>
-                <td className="py-3 px-4 text-gray-700">{pass.department.name}</td>
-                <td className="py-3 px-4 text-gray-700">{pass.reason}</td>
-                <td className="py-3 px-4 text-gray-700">{formatDate(pass.start_date)}</td>
-                <td className="py-3 px-4 text-gray-700">{formatDate(pass.end_date)}</td>
-                <td className="py-3 px-4">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      pass.status.toLowerCase() === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : pass.status.toLowerCase().includes('pending_staff')
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : pass.status.toLowerCase().includes('pending_hod')
-                        ? 'bg-orange-100 text-orange-800'
-                        : pass.status.toLowerCase().includes('pending_academic_director')
-                        ? 'bg-blue-100 text-blue-800'
-                        : pass.status.toLowerCase().includes('pending_hostel_warden')
-                        ? 'bg-purple-100 text-purple-800'
-                        : pass.status.toLowerCase() === 'used'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {pass.status.toUpperCase().replace(/_/g, ' ')}
-                  </span>
-                </td>
-                <td className="py-3 px-4 space-x-2">
-                  <button
-                    onClick={() => openDetailModal(pass)}
-                    className="px-2 py-1 bg-gray-200 text-gray-800 rounded text-sm font-medium hover:bg-gray-300"
-                  >
-                    Details
-                  </button>
-                  
-                  {pass.status.toLowerCase() === 'approved' && (
-                    <button
-                      onClick={() => openVerifyModal(pass)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
+            {filteredPasses.map((pass) => {
+              // Get requester information
+              const requesterName = pass.requester?.name || pass.student?.name || 'N/A';
+              const requesterSin = pass.requester?.sin_number || pass.student?.sin_number || 'N/A';
+              const requesterType = pass.requester_type || 'student';
+              
+              return (
+                <tr key={pass.id} className="border-b hover:bg-gray-50">
+                  <td className="py-3 px-4 font-medium text-gray-900">{pass.id}</td>
+                  <td className="py-3 px-4 font-medium text-gray-900">{requesterName}</td>
+                  <td className="py-3 px-4 text-gray-700">{requesterSin}</td>
+                  <td className="py-3 px-4 text-gray-700">{requesterType}</td>
+                  <td className="py-3 px-4 text-gray-700">{pass.department?.name || 'N/A'}</td>
+                  <td className="py-3 px-4 text-gray-700">{pass.reason}</td>
+                  <td className="py-3 px-4 text-gray-700">{formatDate(pass.start_date)}</td>
+                  <td className="py-3 px-4 text-gray-700">{formatDate(pass.end_date)}</td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        pass.status.toLowerCase() === 'approved'
+                          ? 'bg-green-100 text-green-800'
+                          : pass.status.toLowerCase().includes('pending_staff')
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : pass.status.toLowerCase().includes('pending_hod')
+                          ? 'bg-orange-100 text-orange-800'
+                          : pass.status.toLowerCase().includes('pending_academic_director')
+                          ? 'bg-blue-100 text-blue-800'
+                          : pass.status.toLowerCase().includes('pending_hostel_warden')
+                          ? 'bg-purple-100 text-purple-800'
+                          : pass.status.toLowerCase() === 'used'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
                     >
-                      Verify Exit
+                      {pass.status.toUpperCase().replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 space-x-2">
+                    <button
+                      onClick={() => {
+                        // Set detailed view mode based on requester type
+                        openDetailModal(pass);
+                      }}
+                      className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-md text-sm font-medium hover:bg-indigo-100 transition-colors duration-200 flex items-center"
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1.5" /> 
+                      {pass.requester_type === 'student' ? 'Student Details' : 'Staff Info'}
                     </button>
-                  )}
-                  
-                  {pass.status.toLowerCase() === 'used' && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium">
-                      Verified
-                    </span>
-                  )}
-                  
-                  {pass.status.toLowerCase().includes('pending') && (
-                    <span className="px-2 py-1 bg-yellow-50 text-yellow-700 rounded text-sm font-medium">
-                      In Approval
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    
+                    {pass.status.toLowerCase() === 'approved' && (
+                      <button
+                        onClick={() => openVerifyModal(pass)}
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Verify Exit
+                      </button>
+                    )}
+                    
+                    {pass.status.toLowerCase() === 'used' && (
+                      <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-md text-sm font-medium flex items-center">
+                        <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />
+                        Verified
+                      </span>
+                    )}
+                    
+                    {pass.status.toLowerCase().includes('pending') && (
+                      <span className="px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-md text-sm font-medium flex items-center">
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                        In Approval
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -722,10 +765,13 @@ export default function SecurityDashboard() {
             <div className="p-6">
               <div className="mb-6">
                 <p className="text-gray-800 mb-2 font-medium">
-                  <strong className="text-gray-900">Student:</strong> {selectedGatePass.student.name}
+                  <strong className="text-gray-900">Requester:</strong> {selectedGatePass.requester?.name || selectedGatePass.student?.name || 'N/A'}
                 </p>
                 <p className="text-gray-800 mb-2 font-medium">
-                  <strong className="text-gray-900">SIN Number:</strong> {selectedGatePass.student.sin_number || 'N/A'}
+                  <strong className="text-gray-900">ID Number:</strong> {selectedGatePass.requester?.sin_number || selectedGatePass.student?.sin_number || 'N/A'}
+                </p>
+                <p className="text-gray-800 mb-2 font-medium">
+                  <strong className="text-gray-900">Type:</strong> {selectedGatePass.requester_type || 'student'}
                 </p>
                 <p className="text-gray-800 mb-2 font-medium">
                   <strong className="text-gray-900">Department:</strong> {selectedGatePass.department?.name || 'N/A'}
@@ -795,7 +841,11 @@ export default function SecurityDashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-900">Gate Pass #{selectedGatePass.id} Details</h3>
+              <h3 className="text-lg font-bold text-gray-900">
+                {selectedGatePass.requester_type === 'student' 
+                  ? `Student Gate Pass #${selectedGatePass.id}` 
+                  : `Staff Gate Pass #${selectedGatePass.id}`}
+              </h3>
               <button 
                 onClick={closeDetailModal}
                 className="text-gray-500 hover:text-gray-700"
@@ -807,10 +857,18 @@ export default function SecurityDashboard() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2">Student Information</h4>
-                  <p className="text-gray-900 font-semibold">{selectedGatePass.student.name}</p>
-                  <p className="text-gray-800">{selectedGatePass.student.email}</p>
-                  <p className="text-gray-800">SIN: {selectedGatePass.student.sin_number || 'N/A'}</p>
+                  <h4 className="text-sm font-semibold text-gray-600 mb-2">
+                    {selectedGatePass.requester_type === 'student' ? 'Student Information' : 'Staff Information'}
+                  </h4>
+                  <p className="text-gray-900 font-semibold">
+                    {selectedGatePass.requester?.name || selectedGatePass.student?.name || 'N/A'}
+                  </p>
+                  <p className="text-gray-800">
+                    ID: {selectedGatePass.requester?.sin_number || selectedGatePass.student?.sin_number || 'N/A'}
+                  </p>
+                  <p className="text-gray-800">
+                    Type: {selectedGatePass.requester_type || 'student'}
+                  </p>
                 </div>
                 
                 <div>
@@ -819,42 +877,66 @@ export default function SecurityDashboard() {
                 </div>
               </div>
               
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-600 mb-2">Gate Pass Details</h4>
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Gate Pass Type</p>
-                      <p className="text-gray-900 font-semibold">{selectedGatePass.type}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Current Status</p>
-                      <p className="text-gray-900 font-semibold">{selectedGatePass.status}</p>
+              {/* Only show full details for students */}
+              {(selectedGatePass.requester_type === 'student' || !selectedGatePass.requester_type) && (
+                <>
+                  <div className="mb-6">
+                    <h4 className="text-sm font-semibold text-gray-600 mb-2">Gate Pass Details</h4>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Gate Pass Type</p>
+                          <p className="text-gray-900 font-semibold">{selectedGatePass.type}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Current Status</p>
+                          <p className="text-gray-900 font-semibold">{selectedGatePass.status}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Start Date & Time</p>
+                          <p className="text-gray-900 font-semibold">{new Date(selectedGatePass.start_date).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">End Date & Time</p>
+                          <p className="text-gray-900 font-semibold">{new Date(selectedGatePass.end_date).toLocaleString()}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">Start Date & Time</p>
-                      <p className="text-gray-900 font-semibold">{new Date(selectedGatePass.start_date).toLocaleString()}</p>
+                  <div className="mb-6">
+                    <h4 className="text-sm font-semibold text-gray-600 mb-2">Reason for Leave</h4>
+                    <p className="bg-gray-50 p-3 rounded-lg text-gray-800 border border-gray-100">{selectedGatePass.reason}</p>
+                  </div>
+                  
+                  {selectedGatePass.description && (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-semibold text-gray-600 mb-2">Additional Description</h4>
+                      <p className="bg-gray-50 p-3 rounded-lg text-gray-800 border border-gray-100">{selectedGatePass.description}</p>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">End Date & Time</p>
-                      <p className="text-gray-900 font-semibold">{new Date(selectedGatePass.end_date).toLocaleString()}</p>
+                  )}
+                </>
+              )}
+              
+              {/* For staff/HOD, show a simpler version */}
+              {selectedGatePass.requester_type && selectedGatePass.requester_type !== 'student' && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-gray-600 mb-2">Gate Pass Information</h4>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-600">Valid Period</p>
+                        <p className="text-gray-900 font-semibold">{formatDate(selectedGatePass.start_date)} - {formatDate(selectedGatePass.end_date)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-600">Status</p>
+                        <p className="text-gray-900 font-semibold">{selectedGatePass.status.toUpperCase().replace(/_/g, ' ')}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-600 mb-2">Reason for Leave</h4>
-                <p className="bg-gray-50 p-3 rounded-lg text-gray-800 border border-gray-100">{selectedGatePass.reason}</p>
-              </div>
-              
-              {selectedGatePass.description && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2">Additional Description</h4>
-                  <p className="bg-gray-50 p-3 rounded-lg text-gray-800 border border-gray-100">{selectedGatePass.description}</p>
                 </div>
               )}
               
